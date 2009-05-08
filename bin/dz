@@ -14,5 +14,5 @@ if [[ "$Isfirst" -eq "0" ]]; then
     echo ---------------------------------------- >> $Fmonth
 fi  
 
-cd ~/diary && cat >> $Fmonth ; echo ---------------------------------------- >> $Fmonth
+cd ~/local/diary && cat >> $Fmonth ; echo ---------------------------------------- >> $Fmonth
 cd $workpath
