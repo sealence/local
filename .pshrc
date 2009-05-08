@@ -1,0 +1,2 @@
+option ps1= sub { $inb++; '\npsh['.$inb.']\u@\w> '; }
+use Data::Dumper;
