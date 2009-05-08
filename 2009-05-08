@@ -1,0 +1,11 @@
+1.Configure git to sync my diary:
+http://dilipm79.blogspot.com/2008/11/why-i-love-git-and-github.html
+----------------------------------------
+Host gitproxy
+    User git
+    HostName ssh.github.com
+    ProxyCommand corkscrew 10.35.33.10 80 %h %p
+    Port 443
+    ServerAliveInterval 10
+    #IdentityFile /home/dilipm/.ssh/github
+----------------------------------------
