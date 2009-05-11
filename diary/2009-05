@@ -36,3 +36,10 @@ http://www.stp.ime.reuters.com/twiki/bin/view/FIS/GovCorpEditRuleStatus
 we will make a rewrite of it on our new GovCorpToolsDevBook:
 http://www.stp.ime.reuters.com/twiki/bin/view/FIS/GovCorpToolsDevBook
 ----------------------------------------
+2.Remember to CHAGE ticket status when making a comment!!!
+----------------------------------------
+3.List Apache Loaded Modules:
+sudo apache2ctl -M
+List Apache Virtual Host:
+sudo apache2ctl -S
+----------------------------------------
