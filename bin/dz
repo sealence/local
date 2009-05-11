@@ -2,7 +2,7 @@
 echo Write your Diary:
 workpath=`pwd`
 Day=`date +%F`
-Fmonth=`date +%Y-%m`
+Fmonth=~/local/diary/`date +%Y-%m`
 
 Isfirst=0
 if [[ -e $Fmonth ]]; then
@@ -10,9 +10,8 @@ if [[ -e $Fmonth ]]; then
 fi
 
 if [[ "$Isfirst" -eq "0" ]]; then
-    echo -e "\n $Day `date +%A`" > $Fmonth   
+    echo -e "\n $Day `date +%A`" >> $Fmonth   
     echo ---------------------------------------- >> $Fmonth
 fi  
 
-cd ~/local/diary && cat >> $Fmonth ; echo ---------------------------------------- >> $Fmonth
-cd $workpath
+cat >> $Fmonth ; echo ---------------------------------------- >> $Fmonth

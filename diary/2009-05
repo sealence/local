@@ -28,3 +28,11 @@ Host gitproxy
     ServerAliveInterval 10
     #IdentityFile /home/dilipm/.ssh/github
 ----------------------------------------
+
+ 2009-05-11 Monday
+----------------------------------------
+1.Faye ask about GovCorp Edit Rules Status:
+http://www.stp.ime.reuters.com/twiki/bin/view/FIS/GovCorpEditRuleStatus
+we will make a rewrite of it on our new GovCorpToolsDevBook:
+http://www.stp.ime.reuters.com/twiki/bin/view/FIS/GovCorpToolsDevBook
+----------------------------------------
