@@ -19,7 +19,7 @@ class BlockCategories extends Module
 	function install()
 	{
 		if (parent::install() == false
-			OR $this->registerHook('leftColumn') == false
+			OR $this->registerHook('rightColumn') == false
 			OR Configuration::updateValue('BLOCK_CATEG_MAX_DEPTH', 3) == false
 			OR Configuration::updateValue('BLOCK_CATEG_DHTML', 1) == false)
 			return false;

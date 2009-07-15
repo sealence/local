@@ -18,7 +18,7 @@ class BlockMyAccount extends Module
 
 	public function install()
 	{
-		if (!$this->addMyAccountBlockHook() OR !parent::install() OR !$this->registerHook('leftColumn'))
+		if (!$this->addMyAccountBlockHook() OR !parent::install() OR !$this->registerHook('rightColumn'))
 			return false;
 		return true;
 	}
