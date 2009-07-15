@@ -43,3 +43,9 @@ sudo apache2ctl -M
 List Apache Virtual Host:
 sudo apache2ctl -S
 ----------------------------------------
+
+ 2009-05-13 Wednesday
+----------------------------------------
+1.Install sybase open client on linux
+2.Install Sybase::DBlib via CPAN
+----------------------------------------

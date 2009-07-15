@@ -1,0 +1,65 @@
+PrestaShop <support@prestashop.com>
+Open-source licence 3.0 (http://www.opensource.org/licenses/osl-3.0.php)
+
+####################################
+#   v1.1.0.5 - 184 (2008-18-12)   #
+####################################
+
+Release Notes
+-------------
+
+	Added Features :
+
+- MO : New stats modules: best products and best categories
+- MO : New stats module: best vouchers
+
+
+	Improved/changed features :
+
+- BO : added customer number to order details
+- Classes : improved Customer::searchByName check
+- TR : improved FR translations (thanks to Zendik)
+- Installer : beta 5 ready :P
+- FO : ip address no longer required for connection
+
+
+	Fixed bugs :
+
+- Classes : fixed double code
+- BO : fixed currency bug in AdminCustomers
+- MO : Category display fixed on Konqueror (module blockcategories)
+- Class : Attribute deletion fixed (now delete linked combinations and group associations)
+- FO : Category tree fixed (expansion)
+- BO : "Save and go back to category" link fixed when creating a new product
+- FO : fixed some bugs when displaying errors in pdf and get-file
+- FO : fixed translation bug in shopping-cart
+- Installer : php upgrade file reorganisation
+- Installer : Required customization field update added
+- Installer : SQL install fixed (FALSE value)
+- MO : Homefeatured code cleaned
+- FO : Customizable products containing required fields are not addable to cart from category or home page anymore
+- Class : Link class code fixed
+- BO : CSV Import active field fixed
+- FO : fixed display bug in order-detail with customized product
+- BO : fixed some bugs with confirm translation text (javascript)
+- BO : fixed product quantity cancelled in delivery slip
+- FO : fixed last product added to cart bug
+- FO : fixed dispay bug in authentication.tpl
+- FO : fixed bug while signing-up
+- FO : IE6 bugs fixed
+- FO : Product addition to the cart fixed
+- MO : Referral program checkbox fixed
+- FO : Manufacturer & supplier pagination fixed
+- FO : Customized product quantity upgrade fixed
+- BO : Customizable products upgrade fixed (when required fields were set)
+- FO : English scene images fixed (was french -_-')
+- FO : Customized product picture deletion fixed
+- Class : Category level modification fixed (recursivity added)
+- BO : Tab filters (order ways) fixed
+- FO : Old discount on product does not lock none cumulative vouchers anymore
+- Mail : Order confirmation email fixed when customized products were part of the order
+- Installer : Invoice number fixed
+- FO : Discount description display fixed
+- FO : Customized product addition to the cart fixed (when some fields were required)
+- BO : PDF configuration detailed
+- Installer : Upgrade fixed
