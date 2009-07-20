@@ -18,7 +18,7 @@ class BlockTags extends Module
 	function install()
 	{
 		parent::install();
-		$this->registerHook('rightColumn');
+		$this->registerHook('leftColumn');
 	}
 
 	/**

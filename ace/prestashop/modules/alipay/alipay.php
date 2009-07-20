@@ -298,7 +298,7 @@ class Alipay extends PaymentModule
 		global $smarty;
         $smarty->assign('payment',$this->l('Pay by Alipay'));    
 		$smarty->assign(array(
-			'link' => $this->lianjie($params),
+			'alipay_link' => $this->lianjie($params),
 			'this_path' => $this->_path,
 			'this_path_ssl' => (Configuration::get('PS_SSL_ENABLED') ? 'https://' : 'http://').htmlspecialchars($_SERVER['HTTP_HOST'], ENT_COMPAT, 'UTF-8').__PS_BASE_URI__.'modules/'.$this->name.'/'));
 		return $this->display(__FILE__, 'payment.tpl');

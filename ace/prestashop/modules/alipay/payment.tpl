@@ -5,5 +5,5 @@
 	
 </p>
 <form action="{$this_path_ssl}payment.php" method="post" id="alipay_form" class="hidden">
-<input type="hidden" name="hiddenlink" id="hiddenlink" value="{$link}"/>
+<input type="hidden" name="hiddenlink" id="hiddenlink" value="{$alipay_link}"/>
 </form>

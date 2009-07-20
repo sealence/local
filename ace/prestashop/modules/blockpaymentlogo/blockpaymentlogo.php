@@ -19,7 +19,7 @@ class BlockPaymentLogo extends Module
 	{
 		if (!parent::install())
 			return false;
-		if (!$this->registerHook('rightColumn'))
+		if (!$this->registerHook('leftColumn'))
 			return false;
 		return true;
 	}
