@@ -5,13 +5,15 @@
 {if $special}
 		<ul class="products">
 			<li class="product_image">
-				<a href="{$special.link}"><img src="{$img_prod_dir}{$special.id_image}-medium.jpg" alt="{$special.legend|escape:htmlall:'UTF-8'}" title="{$special.name|escape:htmlall:'UTF-8'}" /></a>
+				<a href="{$special.link}"><img src="{$link->getImageLink($special.link_rewrite, $special.id_image, 'medium')}" alt="{$special.legend|escape:htmlall:'UTF-8'}" height="{$mediumSize.height}" width="{$mediumSize.width}" title="{$special.name|escape:htmlall:'UTF-8'}" /></a>
 			</li>
 			<li>
 				<h5><a href="{$special.link}" title="{$special.name|escape:htmlall:'UTF-8'}">{$special.name|escape:htmlall:'UTF-8'}</a></h5>
 				<span class="price-discount">{displayWtPrice p=$special.price_without_reduction}</span>
 				{if $special.reduction_percent}<span class="reduction">(-{$special.reduction_percent}%)</span>{/if}
-				<span class="price">{displayWtPrice p=$special.price}</span>
+				{if !$priceDisplay || $priceDisplay == 2}<span class="price">{displayWtPrice p=$special.price}</span>{if $priceDisplay == 2} {l s='+Tx'}{/if}{/if}
+				{if $priceDisplay == 2}<br />{/if}
+				{if $priceDisplay}<span class="price">{displayWtPrice p=$special.price_tax_exc}</span>{if $priceDisplay == 2} {l s='-Tx'}{/if}{/if}
 			</li>
 		</ul>
 		<p>

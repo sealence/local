@@ -12,8 +12,6 @@ header('Content-Type: text/html; charset=utf-8');
  * It is not safe to rely on the system's timezone settings, but we can\'t easily determine the user timezone and the use of this function cause trouble for some configurations.
  * This will generate a PHP Strict Standards notice. To fix it up, uncomment the following line.
  */
-if (function_exists('date_default_timezone_set'))
-	date_default_timezone_set('Europe/Paris');
 
 /* Autoload */
 function __autoload($className)
@@ -30,13 +28,15 @@ if (!file_exists(dirname(__FILE__).'/settings.inc.php'))
 		die('Error: \'install\' directory is missing');
 	Tools::redirect('install', $dir);
 }
-
 include(dirname(__FILE__).'/settings.inc.php');
 
 /* Redefine REQUEST_URI if empty (on some webservers...) */
-$_SERVER['REQUEST_URI'] = $_SERVER['SCRIPT_NAME'];
-if (isset($_SERVER['QUERY_STRING']) AND !empty($_SERVER['QUERY_STRING']))
-	$_SERVER['REQUEST_URI'] .= '?'.$_SERVER['QUERY_STRING'];
+if (!isset($_SERVER['REQUEST_URI']) OR empty($_SERVER['REQUEST_URI']))
+{
+	$_SERVER['REQUEST_URI'] = $_SERVER['SCRIPT_NAME'];
+	if (isset($_SERVER['QUERY_STRING']) AND !empty($_SERVER['QUERY_STRING']))
+		$_SERVER['REQUEST_URI'] .= '?'.$_SERVER['QUERY_STRING'];
+}
 
 $currentDir = dirname(__FILE__);
 
@@ -74,8 +74,8 @@ define('_PS_THEME_DIR_',            _PS_ROOT_DIR_.'/themes/'._THEME_NAME_.'/');
 define('_PS_IMG_DIR_',              _PS_ROOT_DIR_.'/img/');
 define('_PS_CAT_IMG_DIR_',          _PS_IMG_DIR_.'c/');
 define('_PS_PROD_IMG_DIR_',         _PS_IMG_DIR_.'p/');
-define('_PS_SCENE_IMG_DIR_',         _PS_IMG_DIR_.'scenes/');
-define('_PS_SCENE_THUMB_IMG_DIR_',         _PS_IMG_DIR_.'scenes/thumbs/');
+define('_PS_SCENE_IMG_DIR_',        _PS_IMG_DIR_.'scenes/');
+define('_PS_SCENE_THUMB_IMG_DIR_',  _PS_IMG_DIR_.'scenes/thumbs/');
 define('_PS_MANU_IMG_DIR_',         _PS_IMG_DIR_.'m/');
 define('_PS_SHIP_IMG_DIR_',         _PS_IMG_DIR_.'s/');
 define('_PS_SUPP_IMG_DIR_',         _PS_IMG_DIR_.'su/');
@@ -97,6 +97,14 @@ define('_PS_MYSQL_REAL_ESCAPE_STRING_', function_exists('mysql_real_escape_strin
 define('_PS_TRANS_PATTERN_',            '(.*[^\\\\])');
 define('_PS_MIN_TIME_GENERATE_PASSWD_', '360');
 
+/* aliases */
+function p($var) {
+	Tools::p($var);
+}
+function d($var) {
+	Tools::d($var);
+}
+
 /* Order states */
 define('_PS_OS_CHEQUE_',      1);
 define('_PS_OS_PAYMENT_',     2);
@@ -108,6 +116,7 @@ define('_PS_OS_REFUND_',      7);
 define('_PS_OS_ERROR_',       8);
 define('_PS_OS_OUTOFSTOCK_',  9);
 define('_PS_OS_BANKWIRE_',    10);
+define('_PS_OS_PAYPAL_',      11);
 
 /* Tax behavior */
 define('PS_PRODUCT_TAX', 0);
@@ -135,7 +144,11 @@ Tax::loadTaxZones();
 /* Loading default country */
 $defaultCountry = new Country(intval(Configuration::get('PS_COUNTRY_DEFAULT')));
 
+/* Define default timezone */
+$timezone = Tools::getTimezones(Configuration::get('PS_TIMEZONE'));
+
+if (function_exists('date_default_timezone_set'))
+	date_default_timezone_set($timezone);
+
 /* Smarty */
 include(dirname(__FILE__).'/smarty.config.inc.php');
-
-?>

@@ -75,7 +75,7 @@ if ($cart->nbProducts())
 		$cart->deleteDiscount(intval($_GET['deleteDiscount']));
 		Tools::redirect('order.php');
 	}
-		
+
 	/* Is there only virtual product in cart */
 	if ($isVirtualCart = $cart->isVirtualCart())
 		setNoCarrier();
@@ -146,7 +146,7 @@ function checkFreeOrder()
 	if ($cart->getOrderTotal() <= 0)
 	{
 		$order = new FreeOrder();
-		$order->validateOrder(intval($cart->id), 2, 0, Tools::displayError('Free order'));
+		$order->validateOrder(intval($cart->id), _PS_OS_PAYMENT_, 0, Tools::displayError('Free order', false));
 		Tools::redirect('history.php');
 	}
 }
@@ -176,8 +176,9 @@ function processAddress()
 	{
 		$cart->id_address_delivery = intval($_POST['id_address_delivery']);
 		$cart->id_address_invoice = isset($_POST['same']) ? intval($_POST['id_address_delivery']) : intval($_POST['id_address_invoice']);
-		$cart->update();
-
+		if (!$cart->update())
+			$errors[] = Tools::displayError('an error occured while updating your cart');
+		
 		if (isset($_POST['message']) AND !empty($_POST['message']))
 		{
 			if (!Validate::isMessage($_POST['message']))
@@ -200,11 +201,15 @@ function processAddress()
 	}
 	if (sizeof($errors))
 	{
+		if (Tools::getValue('ajax'))
+			die('{\'hasError\' : true, errors : [\''.implode('\',\'', $errors).'\']}');
 		$smarty->assign('errors', $errors);
 		displayAddress();
 		include_once(dirname(__FILE__).'/footer.php');
 		exit;
 	}
+	if (Tools::getValue('ajax'))
+		die(true);
 }
 
 /* Carrier step */
@@ -230,7 +235,10 @@ function processCarrier()
 		$cart->gift = 0;
 
 	$address = new Address(intval($cart->id_address_delivery));
-	$id_zone = Address::getZoneById($address->id);
+	if (!Validate::isLoadedObject($address))
+		die(Tools::displayError());
+	if (!$id_zone = Address::getZoneById($address->id))
+		$errors[] = Tools::displayError('no zone match with your address');
 	if (isset($_POST['id_carrier']) AND Validate::isInt($_POST['id_carrier']) AND sizeof(Carrier::checkCarrierZone(intval($_POST['id_carrier']), intval($id_zone))))
 		$cart->id_carrier = intval($_POST['id_carrier']);
 	elseif (!$isVirtualCart)
@@ -296,6 +304,7 @@ function displayAddress()
 	if ($oldMessage = Message::getMessageByCartId(intval($cart->id)))
 		$smarty->assign('oldMessage', $oldMessage['message']);
 	$smarty->assign('cart', $cart);
+	$smarty->assign('back', strval(Tools::getValue('back')));
 
 	Tools::safePostVars();
 	include_once(dirname(__FILE__).'/header.php');
@@ -308,11 +317,18 @@ function displayCarrier()
 	global $smarty, $cart, $cookie, $defaultCountry;
 
 	$address = new Address(intval($cart->id_address_delivery));
-    $id_zone = Address::getZoneById($address->id);
+	$id_zone = Address::getZoneById($address->id);
 	$result = Carrier::getCarriers(intval($cookie->id_lang), true, false, intval($id_zone));
 	$resultsArray = array();
 	foreach ($result AS $k => $row)
 	{
+		$carrier = new Carrier(intval($row['id_carrier']));
+		if ((Configuration::get('PS_SHIPPING_METHOD') AND !$carrier->getMaxDeliveryPriceByWeight($id_zone))
+		OR (!Configuration::get('PS_SHIPPING_METHOD') AND !$carrier->getMaxDeliveryPriceByPrice($id_zone)))
+		{
+			unset($result[$k]);
+			continue ;
+		}
 		if ($row['range_behavior'])
 		{
 			// Get id zone
@@ -320,7 +336,8 @@ function displayCarrier()
 				$id_zone = Address::getZoneById(intval($cart->id_address_delivery));
 			else
 				$id_zone = intval($defaultCountry->id_zone);
-			if ((Configuration::get('PS_SHIPPING_METHOD') AND (!Carrier::checkDeliveryPriceByWeight($row['id_carrier'], $cart->getTotalWeight(), $id_zone))) OR (!Configuration::get('PS_SHIPPING_METHOD') AND (!Carrier::checkDeliveryPriceByPrice($row['id_carrier'], $cart->getOrderTotal(true, 4), $id_zone))))
+			if ((Configuration::get('PS_SHIPPING_METHOD') AND (!Carrier::checkDeliveryPriceByWeight($row['id_carrier'], $cart->getTotalWeight(), $id_zone)))
+			OR (!Configuration::get('PS_SHIPPING_METHOD') AND (!Carrier::checkDeliveryPriceByPrice($row['id_carrier'], $cart->getOrderTotal(true, 4), $id_zone))))
 				{
 					unset($result[$k]);
 					continue ;
@@ -328,9 +345,15 @@ function displayCarrier()
 		}
 		$row['name'] = (strval($row['name']) != '0' ? $row['name'] : Configuration::get('PS_SHOP_NAME'));
 		$row['price'] = $cart->getOrderShippingCost(intval($row['id_carrier']));
+		$row['price_tax_exc'] = $cart->getOrderShippingCost(intval($row['id_carrier']), false);
 		$row['img'] = file_exists(_PS_SHIP_IMG_DIR_.intval($row['id_carrier']).'.jpg') ? _THEME_SHIP_DIR_.intval($row['id_carrier']).'.jpg' : '';
 		$resultsArray[] = $row;
 	}
+
+	// Wrapping fees
+	$wrapping_fees = floatval(Configuration::get('PS_GIFT_WRAPPING_PRICE'));
+	$wrapping_fees_tax = new Tax(intval(Configuration::get('PS_GIFT_WRAPPING_TAX')));
+	$wrapping_fees_tax_exc = $wrapping_fees / (1 + ((floatval($wrapping_fees_tax->rate) / 100)));
 
 	if (Validate::isUnsignedInt($cart->id_carrier))
 	{
@@ -340,17 +363,19 @@ function displayCarrier()
 	}
 	if (!isset($checked))
 		$checked = intval(Configuration::get('PS_CARRIER_DEFAULT'));
-
 	$smarty->assign(array(
 		'checkedTOS' => intval($cookie->checkedTOS),
 		'recyclablePackAllowed' => intval(Configuration::get('PS_RECYCLABLE_PACK')),
 		'giftAllowed' => intval(Configuration::get('PS_GIFT_WRAPPING')),
 		'conditions' => intval(Configuration::get('PS_CONDITIONS')),
 		'recyclable' => intval($cart->recyclable),
-		'gift_wrapping_price' => floatval(Configuration::get('PS_GIFT_WRAPPING_PRICE')),		
+		'gift_wrapping_price' => floatval(Configuration::get('PS_GIFT_WRAPPING_PRICE')),
 		'carriers' => $resultsArray,
-		'checked' => intval($checked)));
-
+		'HOOK_EXTRACARRIER' => Module::hookExec('extraCarrier', array('address' => $address)),
+		'checked' => intval($checked),
+		'back' => strval(Tools::getValue('back')),
+		'total_wrapping' => number_format($wrapping_fees, 2, '.', ''),
+		'total_wrapping_tax_exc' => number_format($wrapping_fees_tax_exc, 2, '.', '')));
 	Tools::safePostVars();
 	$css_files = array(__PS_BASE_URI__.'css/thickbox.css' => 'all');
 	$js_files = array(__PS_BASE_URI__.'js/jquery/thickbox-modified.js');
@@ -363,10 +388,13 @@ function displayPayment()
 {
 	global $smarty, $cart, $currency, $cookie, $orderTotal;
 
+	// Redirect instead of displaying payment modules if any module are grefted on
+	Hook::backBeforePayment(strval(Tools::getValue('back')));
+
 	/* We may need to display an order summary */
 	$smarty->assign($cart->getSummaryDetails());
 
-	$cookie->checkedTOS = true;
+	$cookie->checkedTOS = '1';
 	$smarty->assign(array('HOOK_PAYMENT' => Module::hookExecPayment(), 'total_price' => floatval($orderTotal)));
 
 	Tools::safePostVars();
@@ -384,16 +412,28 @@ function displaySummary()
 	$summary = $cart->getSummaryDetails();
 	$customizedDatas = Product::getAllCustomizedDatas(intval($cart->id));
 	Product::addCustomizationPrice($summary['products'], $customizedDatas);
-
+	
 	if ($free_ship = intval(Configuration::get('PS_SHIPPING_FREE_PRICE')))
-		$smarty->assign('free_ship', $free_ship - ($summary['total_products_wt'] + $summary['total_discounts']));
+	{
+		$discounts = $cart->getDiscounts();
+		$total_free_ship =  $free_ship - ($summary['total_products_wt'] + $summary['total_discounts']);
+		foreach ($discounts as $discount)
+			if ($discount['id_discount_type'] == 3)
+			{
+				$total_free_ship = 0;
+				break ;
+			}
+		$smarty->assign('free_ship', $total_free_ship);
+	}
 	$smarty->assign($summary);
 	$token = Tools::getToken(false);
 	$smarty->assign(array(
 		'token_cart' => $token,
 		'voucherAllowed' => Configuration::get('PS_VOUCHERS'),
 		'HOOK_SHOPPING_CART' => Module::hookExec('shoppingCart', $summary),
+		'HOOK_SHOPPING_CART_EXTRA' => Module::hookExec('shoppingCartExtra', $summary),
 		'shippingCost' => $cart->getOrderTotal(true, 5),
+		'shippingCostTaxExc' => $cart->getOrderTotal(false, 5),
 		'customizedDatas' => $customizedDatas,
 		'CUSTOMIZE_FILE' => _CUSTOMIZE_FILE_,
 		'CUSTOMIZE_TEXTFIELD' => _CUSTOMIZE_TEXTFIELD_,

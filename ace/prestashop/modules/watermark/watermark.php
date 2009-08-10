@@ -24,7 +24,7 @@ class Watermark extends Module
 		$config = Configuration::getMultiple(array('WATERMARK_TYPES', 'WATERMARK_Y_ALIGN', 'WATERMARK_X_ALIGN', 'WATERMARK_TRANSPARENCY'));
 		if (!isset($config['WATERMARK_TYPES']))
 			$config['WATERMARK_TYPES'] = '';
-		$tmp = split(',', $config['WATERMARK_TYPES']);
+		$tmp = explode(',', $config['WATERMARK_TYPES']);
 		foreach (ImageType::getImagesTypes('products') as $type)
 		    if (in_array($type['id_image_type'], $tmp))
 				$this->imageTypes[] = $type;
@@ -33,7 +33,6 @@ class Watermark extends Module
 		$this->xAlign = isset($config['WATERMARK_X_ALIGN']) ? $config['WATERMARK_X_ALIGN'] : '';
 		$this->transparency = isset($config['WATERMARK_TRANSPARENCY']) ? $config['WATERMARK_TRANSPARENCY'] : 60;
 
-		$this->page = basename(__FILE__, '.php');
 		$this->displayName = $this->l('Watermark');
 		$this->description = $this->l('Protect image by watermark');
 		$this->confirmUninstall = $this->l('Are you sure you want to delete your details ?');
@@ -188,39 +187,38 @@ class Watermark extends Module
 	public function hookwatermark($params)
 	{
 		global $smarty;
-		$file['tmp_name'] = _PS_PROD_IMG_DIR_.$params['id_product'].'-'.$params['id_image'].'-watermark.jpg';
-		$file['type'] = 'image/jpg';
+		$file = _PS_PROD_IMG_DIR_.$params['id_product'].'-'.$params['id_image'].'-watermark.jpg';
 		
 		//first make a watermark image
-		$this->watermarkByImage(_PS_PROD_IMG_DIR_.$params['id_product'].'-'.$params['id_image'].'.jpg',  dirname(__FILE__).'/watermark.gif', $file['tmp_name'], 23, 0, 0, 'right');
-		
+		$return = $this->watermarkByImage(_PS_PROD_IMG_DIR_.$params['id_product'].'-'.$params['id_image'].'.jpg',  dirname(__FILE__).'/watermark.gif', $file, 23, 0, 0, 'right');
+
 		//go through file formats defined for watermark and resize them
 		foreach($this->imageTypes as $imageType)
 		{
 		    $newFile = _PS_PROD_IMG_DIR_.$params['id_product'].'-'.$params['id_image'].'-'.stripslashes($imageType['name']).'.jpg';
 		    if (!imageResize($file, $newFile, intval($imageType['width']), intval($imageType['height'])))
-				$errors = true;    
+				$return = false;    
 		}
-		return $errors;
+		return $return;
 	}
 
 	private function watermarkByImage($imagepath, $watermarkpath, $outputpath)
 	{	
-		$Xoffset = 0;
-		$Yoffset = 0;
-		$image = imagecreatefromjpeg($imagepath); 
-		$imagew = imagecreatefromgif($watermarkpath);
+		$Xoffset = $Yoffset = $xpos = $ypos = 0;
+		if (!$image = imagecreatefromjpeg($imagepath))
+			return false;
+		if (!$imagew = imagecreatefromgif($watermarkpath))
+			die ($this->l('the watermark image is not a real gif, please CONVERT and not rename it'));
 		list($watermarkWidth, $watermarkHeight) = getimagesize($watermarkpath); 
 		list($imageWidth, $imageHeight) = getimagesize($imagepath); 
-		$xpos = 0; 
-		$ypos = 0;
 		if ($this->xAlign == "middle") { $xpos = $imageWidth/2 - $watermarkWidth/2 + $Xoffset; } 
 		if ($this->xAlign == "left") { $xpos = 0 + $Xoffset; } 
 		if ($this->xAlign == "right") { $xpos = $imageWidth - $watermarkWidth - $Xoffset; } 
 		if ($this->yAlign == "middle") { $ypos = $imageHeight/2 - $watermarkHeight/2 + $Yoffset; } 
 		if ($this->yAlign == "top") { $ypos = 0 + $Yoffset; } 
 		if ($this->yAlign == "bottom") { $ypos = $imageHeight - $watermarkHeight - $Yoffset; } 
-		imagecopymerge($image, $imagew, $xpos, $ypos, 0, 0, $watermarkWidth, $watermarkHeight, $this->transparency); 
+		if (!imagecopymerge($image, $imagew, $xpos, $ypos, 0, 0, $watermarkWidth, $watermarkHeight, $this->transparency))
+			return false;
 		return imagejpeg($image, $outputpath, 100); 
 	} 
 }

@@ -8,7 +8,7 @@
 	* @author PrestaShop <support@prestashop.com>
 	* @copyright PrestaShop
 	* @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-	* @version 1.0
+	* @version 1.2
 	*
 	*/
 
@@ -106,6 +106,13 @@ class		ImageType extends ObjectModel
 			WHERE `name` = \''.pSQL($typeName).'\''
 		);
 		return Db::getInstance()->NumRows();
+	}
+
+	static public function getByNameNType($name, $type)
+	{
+		if (!in_array($type, array('products', 'categories', 'manufacturers', 'suppliers', 'scenes')))
+			die(Tools::displayError());
+		return Db::getInstance()->getRow('SELECT `id_image_type`, `name`, `width`, `height`, `products`, `categories`, `manufacturers`, `suppliers`, `scenes` FROM `'._DB_PREFIX_.'image_type` WHERE `name` = \''.pSQL($name).'\' AND `'.pSQL($type).'` = 1');
 	}
 
 }

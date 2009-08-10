@@ -5,7 +5,7 @@
  * Please read the LICENSE file
  * @author Chris Corbyn <chris@w3style.co.uk>
  * @package EasySwift
- * @version 1.0.2
+ * @version 1.0.3
  * @license GNU Lesser General Public License
  */
 
@@ -109,7 +109,7 @@ class EasySwift
       $this->swift = new Swift($connection, $domain, Swift::ENABLE_LOGGING);
       Swift_ClassLoader::load("Swift_Plugin_EasySwiftResponseTracker");
       $this->swift->attachPlugin(new Swift_Plugin_EasySwiftResponseTracker($this), "_ResponseTracker");
-    } catch (Swift_Connection_Exception $e) {
+    } catch (Swift_ConnectionException $e) {
       $this->failed = true;
       $this->setError("The connection failed to start.  An exception was thrown:<br />" . $e->getMessage());
     }
@@ -163,7 +163,8 @@ class EasySwift
    */
   public function setMaxLogSize($size)
   {
-    $this->swift->log->setMaxSize($size);
+    $log = Swift_LogContainer::getLog();
+    $log->setMaxSize($size);
   }
   /**
    * Turn logging on or off (saves memory)
@@ -171,8 +172,9 @@ class EasySwift
    */
   public function useLogging($use=true)
   {
-    if ($use) $this->log->enable();
-    else $this->log->disable();
+    $log = Swift_LogContainer::getLog();
+    if ($use) $log->setLogLevel(Swift_Log::LOG_NETWORK);
+    else $log->setLogLevel(Swift_Log::LOG_NOTHING);
   }
   /**
    * Enable line resizing (on 1000 by default)
@@ -197,7 +199,8 @@ class EasySwift
    */
   public function dumpLog()
   {
-    $this->swift->log->dump();
+    $log = Swift_LogContainer::getLog();
+    $log->dump();
   }
   /**
    * This method should be called if you do not wish to send messages in batch mode (i.e. if all recipients should see each others' addresses)
@@ -298,7 +301,7 @@ class EasySwift
       try {
         $this->swift->connect();
         return true;
-      } catch (Swift_Connection_Exception $e) {
+      } catch (Swift_ConnectionException $e) {
         $this->failed = true;
         $this->setError("Swift failed to run the connection process:<br />" . $e->getMessage());
       }
@@ -323,7 +326,7 @@ class EasySwift
       try {
         $this->swift->disconnect();
         return true;
-      } catch (Swift_Connection_Exception $e) {
+      } catch (Swift_ConnectionException $e) {
         $this->setError("Disconnect failed:<br />" . $e->getMessage());
       }
     }
@@ -341,7 +344,7 @@ class EasySwift
     try {
       $rs = $this->swift->command($command);
       return $rs->getString();
-    } catch (Swift_Connection_Exception $e) {
+    } catch (Swift_ConnectionException $e) {
       $this->setError("Command failed:<br />" . $e->getMessage());
       return false;
     }
@@ -415,7 +418,7 @@ class EasySwift
       try {
         $this->swift->connection->runAuthenticators($username, $password, $this->swift);
         return true;
-      } catch (Swift_Connection_Exception $e) {
+      } catch (Swift_ConnectionException $e) {
         $this->setError("Authentication failed:<br />" . $e->getMessage());
         return false;
       }
@@ -655,7 +658,8 @@ class EasySwift
    */
   public function getFailedRecipients()
   {
-    return $this->swift->log->getFailedRecipients();
+    $log = Swift_LogContainer::getLog();
+    return $log->getFailedRecipients();
   }
   /**
    * Set the multipart MIME warning message (only seen by old clients)
@@ -937,7 +941,7 @@ class EasySwift
       }
       if ($this->autoFlush) $this->flush();
       return $sent;
-    } catch (Swift_Connection_Exception $e) {
+    } catch (Swift_ConnectionException $e) {
       $this->setError("Sending failed:<br />" . $e->getMessage());
       return false;
     }

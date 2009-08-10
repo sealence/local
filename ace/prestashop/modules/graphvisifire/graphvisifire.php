@@ -15,6 +15,7 @@ class GraphVisifire extends ModuleGraphEngine
 	private	$_xml;
 	private	$_values = NULL;
 	private	$_legend = NULL;
+	private	$_titles = NULL;
 	
     function __construct($type = null)
     {
@@ -33,7 +34,6 @@ class GraphVisifire extends ModuleGraphEngine
 	        $this->name = 'graphvisifire';
 	        $this->tab = 'Stats Engines';
 	        $this->version = 1.0;
-			$this->page = basename(__FILE__, '.php');
 
 	        Module::__construct();
 			
@@ -63,7 +63,19 @@ class GraphVisifire extends ModuleGraphEngine
 			
 	public function createValues($values)
 	{
-		$this->_values = $values;
+		$this->_values = array();
+		if (!is_array($values[array_rand($values)]))
+			foreach ($values as $value)
+				$this->_values[] = $value;
+		else
+		{
+			foreach ($values as $i => $layerValue)
+			{
+				$this->_values[$i] = array();
+				foreach ($layerValue as $value)
+					$this->_values[$i][] = $value;
+			}
+		}
 	}
 	
 	public function setSize($width, $height)
@@ -73,13 +85,28 @@ class GraphVisifire extends ModuleGraphEngine
 
 	public function setLegend($legend)
 	{
-		$this->_legend = $legend;
+		$this->_legend = array();
+		if (!is_array($legend[array_rand($legend)]))
+			foreach ($legend as $label)
+				$this->_legend[] = $label;
+		else
+		{
+			foreach ($legend as $i => $layerlabel)
+			{
+				$this->_legend[$i] = array();
+				foreach ($layerlabel as $label)
+					$this->_legend[$i][] = $label;
+			}
+		}
 	}
 
 	public function setTitles($titles)
 	{
-		if (isset($titles['main']))
+		$this->_titles = $titles;
+		if (isset($titles['main']) && !is_array($titles['main']))
 			$this->_xml .= '<vc:Title Text="'.$titles['main'].'"/>';
+		if (is_array($titles['main']) && isset($titles['main'][0]))
+			$this->_xml .= '<vc:Title Text="'.$titles['main'][0].'"/>';
 		if (isset($titles['x']))
 			$this->_xml .= '<vc:AxisX Title="'.$titles['x'].'" />';
 		if (isset($titles['y']))
@@ -88,27 +115,52 @@ class GraphVisifire extends ModuleGraphEngine
 
 	public function draw()
 	{
+		header('content-type: text/xml'); 
 		if ($this->_values != NULL && $this->_legend != NULL)
 		{
-			$size = sizeof($this->_values);
+			if (!isset($this->_values[0]) || !is_array($this->_values[0]))
+				$size = sizeof($this->_values);
+			else
+				$size = sizeof($this->_values[0]);
 			if ($size == sizeof($this->_legend))
 			{
-				$this->_xml .= '<vc:DataSeries RenderAs="'.$this->_type.'">';
-				for ($i = 0; $i < $size; $i++)
+				if (!is_array($this->_values[array_rand($this->_values)]))
 				{
-					$this->_xml .= '<vc:DataPoint ';
-					if (!empty($this->_legend[$i]))
-						$this->_xml .= 'AxisLabel="'.str_replace('<', '&lt;', str_replace('>', '&gt;', str_replace('&', '&amp;', str_replace('&quot', "'", $this->_legend[$i])))).'" ';
-					$this->_xml .= 'YValue="'.$this->_values[$i].'"';
-					if ($this->_type == 'pie')
-						$this->_xml .= ' ExplodeOffset="0.2"';
-					$this->_xml .= '/>';
+					$this->_xml .= '<vc:DataSeries RenderAs="'.$this->_type.'">';
+					for ($i = 0; $i < $size; $i++)
+					{
+						$this->_xml .= '<vc:DataPoint ';
+						$this->_xml .= 'AxisLabel=" '.str_replace('<', '&lt;', str_replace('>', '&gt;', str_replace('&', '&amp;', str_replace('&quot', "'", $this->_legend[$i])))).'" ';
+						$this->_xml .= 'YValue="'.$this->_values[$i].'"';
+						if ($this->_type == 'pie')
+							$this->_xml .= ' ExplodeOffset="0.2"';
+						$this->_xml .= '/>';
+					}
+					$this->_xml .= '</vc:DataSeries>';
 				}
-				$this->_xml .= '</vc:DataSeries>';
+				else
+				{
+					foreach ($this->_values as $layer => $values)
+					{
+						$this->_xml .= '<vc:DataSeries Name="'.(isset($this->_titles['main'][$layer+1]) ? $this->_titles['main'][$layer+1] : '').'" RenderAs="'.$this->_type.'">';
+						foreach ($values as $i => $value)
+						{
+							$this->_xml .= '<vc:DataPoint ';
+							if ($layer == 0)
+								$this->_xml .= 'AxisLabel=" '.str_replace('<', '&lt;', str_replace('>', '&gt;', str_replace('&', '&amp;', str_replace('&quot', "'", $this->_legend[$i])))).'" ';
+							$this->_xml .= 'YValue="'.$value.'"';
+							if ($this->_type == 'pie')
+								$this->_xml .= ' ExplodeOffset="0.2"';
+							$this->_xml .= '/>';
+						}
+						$this->_xml .= '</vc:DataSeries>';
+					}
+				}
 			}
 		}
 		$this->_xml .= '</vc:Chart>';
 		echo $this->_xml;
+		exit(1);
 	}
 }
 

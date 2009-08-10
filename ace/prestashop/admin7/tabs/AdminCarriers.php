@@ -7,7 +7,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -84,7 +84,7 @@ class AdminCarriers extends AdminTab
 				</div>
 				<label>'.$this->l('URL:').' </label>
 				<div class="margin-form">
-					<input type="text" size="40" name="url" value="'.htmlentities($this->getFieldValue($obj, 'url'), ENT_COMPAT, 'UTF-8').(!$this->getFieldValue($obj, 'url') ? '@' : '').'" />
+					<input type="text" size="40" name="url" value="'.htmlentities($this->getFieldValue($obj, 'url'), ENT_COMPAT, 'UTF-8').'" />
 					<p class="clear">'.$this->l('URL for the tracking number; type \'@\' where the tracking number will appear').'</p>
 				</div>
 				<label>'.$this->l('Tax:').'</label>
@@ -102,7 +102,7 @@ class AdminCarriers extends AdminTab
 					$carrier_zones = $obj->getZones();
 					$zones = Zone::getZones(true);
 					foreach ($zones AS $zone)
-						echo '<input type="checkbox" id="zone_'.$zone['id_zone'].'" name="zone_'.$zone['id_zone'].'" value="true" '.((is_array($carrier_zones) AND in_array(array('id_carrier' => $obj->id, 'id_zone' => $zone['id_zone']), $carrier_zones)) ? ' checked="checked"' : '').'><label class="t" for="zone_'.$zone['id_zone'].'">&nbsp;<b>'.$zone['name'].'</b></label><br />';
+						echo '<input type="checkbox" id="zone_'.$zone['id_zone'].'" name="zone_'.$zone['id_zone'].'" value="true" '.(Tools::getValue('zone_'.$zone['id_zone'], (is_array($carrier_zones) AND in_array(array('id_carrier' => $obj->id, 'id_zone' => $zone['id_zone']), $carrier_zones))) ? ' checked="checked"' : '').'><label class="t" for="zone_'.$zone['id_zone'].'">&nbsp;<b>'.$zone['name'].'</b></label><br />';
 				echo '<p>'.$this->l('The zone in which this carrier is to be used').'</p>
 				</div>
 				<label>'.$this->l('Status:').' </label>
@@ -124,8 +124,8 @@ class AdminCarriers extends AdminTab
 				<label>'.$this->l('Out-of-range behavior:').' </label>
 				<div class="margin-form">
 					<select name="range_behavior">
-						<option value="0"'.(!$obj->range_behavior ? ' selected="selected"' : '').'>'.$this->l('Apply the cost of the highest defined range').'</option>
-						<option value="1"'.($obj->range_behavior ? ' selected="selected"' : '').'>'.$this->l('Disable carrier').'</option>
+						<option value="0"'.(!$this->getFieldValue($obj, 'range_behavior') ? ' selected="selected"' : '').'>'.$this->l('Apply the cost of the highest defined range').'</option>
+						<option value="1"'.($this->getFieldValue($obj, 'range_behavior') ? ' selected="selected"' : '').'>'.$this->l('Disable carrier').'</option>
 					</select>
 					<p>'.$this->l('Out-of-range behavior when none is defined (e.g., when a customer\'s cart weight is superior to the highest range limit)').'</p>
 				</div>
@@ -173,7 +173,10 @@ public function postProcess()
 							$this->copyFromPost($objectNew, $this->table);
 							$result = $objectNew->add();
 							if (Validate::isLoadedObject($objectNew))
+							{
 								$this->afterDelete($objectNew, $object->id);
+								Hook::updateCarrier(intval($object->id), $objectNew);
+							}
 							
 							if (!$result)
 								$this->_errors[] = Tools::displayError('an error occurred while updating object').' <b>'.$this->table.'</b>';

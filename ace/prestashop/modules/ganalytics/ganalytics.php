@@ -6,12 +6,11 @@ class GAnalytics extends Module
 	{
 	 	$this->name = 'ganalytics';
 	 	$this->tab = 'Stats';
-	 	$this->version = '1.0';
+	 	$this->version = '1.2';
         $this->displayName = 'Google Analytics';
 		
 	 	parent::__construct();
 		
-		$this->page = basename(__FILE__, '.php');
 		if (!Configuration::get('GANALYTICS_ID'))
 			$this->warning = $this->l('You have not yet set your Google Analytics ID');
         $this->description = $this->l('Integrate the Google Analytics script into your shop');
@@ -58,7 +57,7 @@ class GAnalytics extends Module
 					<input type="text" name="ganalytics_id" value="'.Tools::getValue('ganalytics_id', Configuration::get('GANALYTICS_ID')).'" />
 					<p class="clear">'.$this->l('Example:').' UA-1234567-1</p>
 				</div>
-				<center><input type="submit" name="submitGAnalytics" value="'.$this->l('Update ID').'" class="button" /></center>			
+				<center><input type="submit" name="submitGAnalytics" value="'.$this->l('Update ID').'" class="button" /></center>
 			</fieldset>
 		</form>';
 		
@@ -123,23 +122,29 @@ class GAnalytics extends Module
 	
 	function hookFooter($params)
 	{
-		global $step;
+		global $step, $protocol_content;
 
 		$output = '
 		<script type="text/javascript">
-			var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
-			document.write(unescape("%3Cscript src=\'" + gaJsHost + "google-analytics.com/ga.js\' type=\'text/javascript\'%3E%3C/script%3E"));
+			document.write(unescape("%3Cscript src=\''.$protocol_content.'www.google-analytics.com/ga.js\' type=\'text/javascript\'%3E%3C/script%3E"));
 		</script>
 		<script type="text/javascript">
+		try
+		{
 			var pageTracker = _gat._getTracker("'.Configuration::get('GANALYTICS_ID').'");
 			pageTracker._trackPageview();
 			'.(strpos($_SERVER['REQUEST_URI'], __PS_BASE_URI__.'order.php') === 0 ? 'pageTracker._trackPageview("/order/step'.intval($step).'.html");' : '').'
+		}
+		catch(err)
+			{}
 		</script>';
 		return $output;
 	}
 	
 	function hookOrderConfirmation($params)
 	{
+		global $protocol_content;
+
 		$order = $params['objOrder'];
 		if (Validate::isLoadedObject($order))
 		{
@@ -147,7 +152,7 @@ class GAnalytics extends Module
 			
 			/* Order general informations */
 			$output = '
-			<script src="http://www.google-analytics.com/ga.js" type="text/javascript"></script>
+			<script src="'.$protocol_content.'www.google-analytics.com/ga.js" type="text/javascript"></script>
 	
 			<script type="text/javascript">
 			  var pageTracker = _gat._getTracker("'.Configuration::get('GANALYTICS_ID').'");
@@ -187,4 +192,3 @@ class GAnalytics extends Module
 		}
 	}
 }
-?>

@@ -25,7 +25,15 @@ function isFormValid()
 // Check each POST data...
 
 $error = array();
-
+foreach ($_GET AS &$var)
+{	
+	if (is_string($var))
+		$var = html_entity_decode($var, ENT_COMPAT, 'UTF-8');
+	elseif (is_array($var))
+		foreach ($var AS &$row)
+			$row = html_entity_decode($row, ENT_COMPAT, 'UTF-8');
+}
+	
 if(!isset($_GET['infosShop']) OR empty($_GET['infosShop']))
 	$error['infosShop'] = '0';
 else
@@ -45,17 +53,35 @@ if(isset($_GET['infosEmail']) AND !Validate::isEmail($_GET['infosEmail']))
 	$error['infosEmail'] = '3';
 else
 	$error['infosEmail'] = '';
-	
+
+if (isset($_GET['infosShop']) AND !Validate::isGenericName($_GET['infosShop']))
+	$error['validateShop'] = '46';
+else
+	$error['validateShop'] = '';
+
+if (isset($_GET['infosFirstname']) AND !Validate::isName($_GET['infosFirstname']))
+	$error['validateFirstname'] = '47';
+else
+	$error['validateFirstname'] = '';
+
+if (isset($_GET['infosName']) AND !Validate::isName($_GET['infosName']))
+	$error['validateName'] = '48';
+else
+	$error['validateName'] = '';
+
 if(!isset($_GET['infosEmail']) OR empty($_GET['infosEmail']))
 	$error['infosEmail'] = '0';
 
-if(!isset($_GET['infosPassword'])
-	OR empty($_GET['infosPassword'])
-	OR !isset($_GET['infosPasswordRepeat'])
-	OR empty($_GET['infosPasswordRepeat']))
+if (!isset($_GET['infosPassword']) OR empty($_GET['infosPassword']))
 	$error['infosPassword'] = '0';
 else
 	$error['infosPassword'] = '';
+	
+if (!isset($_GET['infosPasswordRepeat']) OR empty($_GET['infosPasswordRepeat']))
+	$error['infosPasswordRepeat'] = '0';
+else
+	$error['infosPasswordRepeat'] = '';
+
 	
 if($error['infosPassword'] == '' AND $_GET['infosPassword'] != $_GET['infosPasswordRepeat'])
 	$error['infosPassword'] = '2';

@@ -142,7 +142,8 @@ class Backup
 		$this->id = realpath($backupfile);
 
 		fwrite($fp, '/* Backup for ' . $_SERVER['HTTP_HOST'] . __PS_BASE_URI__ . "\n *  at " . date($date) . "\n */\n");
-
+		fwrite($fp, "\n".'SET NAMES \'utf8\';'."\n\n");
+		
 		// Find all tables
 		$tables = Db::getInstance()->ExecuteS('SHOW TABLES');
 		$found = 0;		
@@ -170,7 +171,7 @@ class Backup
 		
 			$data = Db::getInstance()->ExecuteS('SELECT * FROM `' . $schema[0]['Table'] . '`');
 
-			if (count($data) > 0)
+			if ($data AND is_array($data) AND sizeof($data) > 0)
 			{
 				// Export the table data
 				fwrite($fp, 'INSERT INTO `' . $schema[0]['Table'] . "` VALUES\n");
@@ -182,10 +183,12 @@ class Backup
 						$s .= "'" . mysql_real_escape_string($value) . "',";
 					$s = rtrim($s, ',');
 
-					if ($i < count($data) - 1)
+					if ($i%200 == 0 AND $i < sizeof($data) - 1)
+						$s .= ");\nINSERT INTO `".$schema[0]['Table']."` VALUES\n";
+					elseif ($i < sizeof($data) - 1)
 						$s .= "),\n";
 					else
-						$s .= ");\n\n\n";
+						$s .= ");\n";
 					
 					fwrite($fp, $s);
 				}

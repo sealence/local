@@ -12,8 +12,9 @@ class BlockWishList extends Module
 		$this->name = 'blockwishlist';
 		$this->tab = 'Blocks';
 		$this->version = 0.2;
+		
 		parent::__construct();
-		$this->page = basename(__FILE__, '.php');
+		
 		$this->displayName = $this->l('Wishlist block');
 		$this->description = $this->l('Adds a block containing the customer\'s wishlists');
 	}
@@ -25,7 +26,7 @@ class BlockWishList extends Module
 		else if (!$sql = file_get_contents(dirname(__FILE__).'/'.self::INSTALL_SQL_FILE))
 			return (false);
 		$sql = str_replace('PREFIX_', _DB_PREFIX_, $sql);
-		$sql = preg_split("/;\s*[\r\n]+/",$sql);
+		$sql = preg_split("/;\s*[\r\n]+/", $sql);
 		foreach ($sql AS $k=>$query)
 			Db::getInstance()->Execute(trim($query));
 		if (!parent::install() OR
@@ -34,6 +35,7 @@ class BlockWishList extends Module
 						!$this->registerHook('cart') OR
 						!$this->registerHook('customerAccount') OR
 						!$this->registerHook('header') OR
+						!$this->registerHook('adminCustomers') OR
 						!Configuration::updateValue('PS_BLOCK_WISHLIST_ACTIVATED', 1)
 					)
 			return false;
@@ -128,7 +130,13 @@ class BlockWishList extends Module
 		$wishlists = WishList::getByIdCustomer($id_customer);
 		if (!sizeof($wishlists))
 			return ($this->_html .= '</fieldset></form>');
-		$id_wishlist = intval(Tools::getValue('id_wishlist'));
+		$id_wishlist = false;
+		foreach ($wishlists AS $row)
+			if ($row['id_wishlist'] == Tools::getValue('id_wishlist'))
+			{
+				$id_wishlist = intval(Tools::getValue('id_wishlist'));
+				break;
+			}
 		if (!$id_wishlist)
 			$id_wishlist = $wishlists[0]['id_wishlist'];
 		$this->_html .= '
@@ -148,57 +156,8 @@ class BlockWishList extends Module
 		$this->_html .= '
 					</select>
 				</div>';
-		$products = WishList::getProductByIdCustomer(intval($id_wishlist), intval($id_customer), intval($cookie->id_lang));
-		for ($i = 0; $i < sizeof($products); ++$i)
-		{
-			$obj = new Product(intval($products[$i]['id_product']), false, intval($cookie->id_lang));
-			if (!Validate::isLoadedObject($obj))
-				continue;
-			else
-			{
-				$images = $obj->getImages(intval($cookie->id_lang));
-				foreach ($images AS $k => $image)
-				{
-					if ($image['cover'])
-					{
-						$products[$i]['cover'] = $obj->id.'-'.$image['id_image'];
-						break;
-					}
-				}
-				if (!isset($products[$i]['cover']))
-					$products[$i]['cover'] = Language::getIsoById(intval($cookie->id_lang)).'-default';
-			}
-		}
-		$this->_html .= '
-		<table class="table">
-			<thead>
-				<tr>
-					<th class="first_item" style="width:600px;">'.$this->l('Product').'</th>
-					<th class="item" style="text-align:center;width:150px;">'.$this->l('Quantity').'</th>
-					<th class="item" style="text-align:center;width:150px;">'.$this->l('Priority').'</th>
-				</tr>
-			</thead>
-			<tbody>';
-			$priority = array($this->l('High'), $this->l('Medium'), $this->l('Low'));
-			foreach ($products as $product)
-			{
-				$this->_html .= '
-				<tr>
-					<td class="first_item">
-						<img src="'._THEME_PROD_DIR_.$product['cover'].'-small.jpg" alt="'.htmlentities($product['name'], ENT_COMPAT, 'UTF-8').'" style="float:left;" />
-						'.$product['name'];
-				if (isset($product['attributes_small']))
-					$this->_html .= '<br /><i>'.htmlentities($product['attributes_small'], ENT_COMPAT, 'UTF-8').'</i>';
-				$this->_html .= '
-					</td>
-					<td class="item" style="text-align:center;">'.intval($product['quantity']).'</td>
-					<td class="item" style="text-align:center;">'.$priority[intval($product['priority']) % 3].'</td>
-				</tr>';
-			}
-		$this->_html .= '
-			</tbody>
-		</table>
-			</fieldset>
+		$this->_displayProducts(intval($id_wishlist));
+		$this->_html .= 	'</fieldset>
 		</form>';
 	}
 		
@@ -256,7 +215,110 @@ class BlockWishList extends Module
 	{
 		return $this->hookCustomerAccount($params);
 	}
+	
+	private function _displayProducts($id_wishlist)
+	{
+		global $cookie;
+		include_once(dirname(__FILE__).'/WishList.php');
+		
+		$wishlist = new WishList(intval($id_wishlist));
+		$products = WishList::getProductByIdCustomer(intval($id_wishlist), intval($wishlist->id_customer), intval($cookie->id_lang));
+		for ($i = 0; $i < sizeof($products); ++$i)
+		{
+			$obj = new Product(intval($products[$i]['id_product']), false, intval($cookie->id_lang));
+			if (!Validate::isLoadedObject($obj))
+				continue;
+			else
+			{
+				$images = $obj->getImages(intval($cookie->id_lang));
+				foreach ($images AS $k => $image)
+				{
+					if ($image['cover'])
+					{
+						$products[$i]['cover'] = $obj->id.'-'.$image['id_image'];
+						break;
+					}
+				}
+				if (!isset($products[$i]['cover']))
+					$products[$i]['cover'] = Language::getIsoById(intval($cookie->id_lang)).'-default';
+			}
+		}
+		$this->_html .= '
+		<table class="table">
+			<thead>
+				<tr>
+					<th class="first_item" style="width:600px;">'.$this->l('Product').'</th>
+					<th class="item" style="text-align:center;width:150px;">'.$this->l('Quantity').'</th>
+					<th class="item" style="text-align:center;width:150px;">'.$this->l('Priority').'</th>
+				</tr>
+			</thead>
+			<tbody>';
+			$priority = array($this->l('High'), $this->l('Medium'), $this->l('Low'));
+			foreach ($products as $product)
+			{
+				$this->_html .= '
+				<tr>
+					<td class="first_item">
+						<img src="'._THEME_PROD_DIR_.$product['cover'].'-small.jpg" alt="'.htmlentities($product['name'], ENT_COMPAT, 'UTF-8').'" style="float:left;" />
+						'.$product['name'];
+				if (isset($product['attributes_small']))
+					$this->_html .= '<br /><i>'.htmlentities($product['attributes_small'], ENT_COMPAT, 'UTF-8').'</i>';
+				$this->_html .= '
+					</td>
+					<td class="item" style="text-align:center;">'.intval($product['quantity']).'</td>
+					<td class="item" style="text-align:center;">'.$priority[intval($product['priority']) % 3].'</td>
+				</tr>';
+			}
+		$this->_html .= '</tbody></table>';
+	}
+	
+	public function hookAdminCustomers($params)
+	{
+		require_once(dirname(__FILE__).'/WishList.php');
+		
+		$customer = new Customer(intval($params['id_customer']));
+		if (!Validate::isLoadedObject($customer))
+			die (Tools::displayError());
+
+		$this->_html = '<h2>'.$this->l('Wishlists').'</h2>';
+		
+		$wishlists = WishList::getByIdCustomer(intval($customer->id));
+		if (!sizeof($wishlists))
+			$this->_html .= $customer->lastname.' '.$customer->firstname.' '.$this->l('had no wishlist');
+		else
+		{
+			$this->_html .= '<form action="'.$_SERVER['REQUEST_URI'].'" method="post" id="listing">';
+	
+			$id_wishlist = intval(Tools::getValue('id_wishlist'));
+			if (!$id_wishlist)
+					$id_wishlist = $wishlists[0]['id_wishlist'];
+			
+			$this->_html .= '<span>'.$this->l('Wishlist').': </span> <select name="id_wishlist" onchange="$(\'#listing\').submit();">';
+			foreach ($wishlists as $wishlist)
+			{
+				$this->_html .= '<option value="'.intval($wishlist['id_wishlist']).'"';
+				if ($wishlist['id_wishlist'] == $id_wishlist)
+				{
+					$this->_html .= ' selected="selected"';
+					$counter = $wishlist['counter'];
+				}
+				$this->_html .= '>'.htmlentities($wishlist['name'], ENT_COMPAT, 'UTF-8').'</option>';
+			}		
+			$this->_html .= '</select>';
+			
+			$this->_displayProducts(intval($id_wishlist));
+						
+			$this->_html .= '</form><br />';
+			
+			return $this->_html;
+		}
+	}
+	/*
+	* Display Error from controler
+	*/
+	public function errorLogged()
+	{
+		return $this->l('You need to be logged to manage your wishlist');
+	}
 }
-
-
 ?>

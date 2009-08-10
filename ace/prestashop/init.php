@@ -12,14 +12,22 @@ elseif (basename($_SERVER['PHP_SELF']) != 'disabled.php' AND !intval(Configurati
 ob_start();
 global $cart, $cookie, $_CONF, $link;
 
+
 /* get page name to display it in body id */
 $pathinfo = pathinfo(__FILE__);
 $page_name = basename($_SERVER['PHP_SELF'], '.'.$pathinfo['extension']);
-$page_name = (ereg('^[0-9]', $page_name)) ? 'page_'.$page_name : $page_name;
+$page_name = (preg_match('/^[0-9]/', $page_name)) ? 'page_'.$page_name : $page_name;
 
+// Init Cookie
 $cookie = new Cookie('ps');
-Tools::setCookieLanguage();
+
+// Switch language if needed and init cookie language
+if ($iso = Tools::getValue('isolang') AND Validate::isLanguageIsoCode($iso) AND ($id_lang = intval(Language::getIdByIso($iso))))
+	$_GET['id_lang'] = $id_lang;
+	
 Tools::switchLanguage();
+Tools::setCookieLanguage();
+
 /* attribute id_lang is often needed, so we create a constant for performance reasons */
 define('_USER_ID_LANG_', intval($cookie->id_lang));
 
@@ -61,6 +69,7 @@ if (!isset($cart) OR !$cart->id)
 	$cart = new Cart();
 	$cart->id_lang = intval($cookie->id_lang);
     $cart->id_currency = intval($cookie->id_currency);
+	$cart->id_guest = intval($cookie->id_guest);
     if ($cookie->id_customer)
     	$cart->id_customer = intval($cookie->id_customer);
 }
@@ -68,8 +77,9 @@ if (!$cart->nbProducts())
 	$cart->id_carrier = NULL;
 
 $ps_language = new Language(intval($cookie->id_lang));
-setlocale(LC_TIME, strtolower($ps_language->iso_code).'_'.strtoupper($ps_language->iso_code).'@euro', 
-strtolower($ps_language->iso_code).'_'.strtoupper($ps_language->iso_code), strtolower($ps_language->iso_code));
+setlocale(LC_COLLATE, strtolower($ps_language->iso_code).'_'.strtoupper($ps_language->iso_code).'.UTF-8');
+setlocale(LC_CTYPE, strtolower($ps_language->iso_code).'_'.strtoupper($ps_language->iso_code).'.UTF-8');
+setlocale(LC_NUMERIC, 'en_EN.UTF-8');
 
 if (is_object($currency))
 	$smarty->ps_currency = $currency;
@@ -92,28 +102,34 @@ $smarty->assign('request_uri', Tools::safeOutput(urldecode($_SERVER['REQUEST_URI
 $navigationPipe = (Configuration::get('PS_NAVIGATION_PIPE') ? Configuration::get('PS_NAVIGATION_PIPE') : '>');
 $smarty->assign('navigationPipe', $navigationPipe);
 
-$protocol = (isset($useSSL) AND $useSSL AND Configuration::get('PS_SSL_ENABLED')) ? 'https://' : 'http://';
+/* Server Params */
+$server_host = htmlspecialchars($_SERVER['HTTP_HOST'], ENT_COMPAT, 'UTF-8');
+$protocol = 'http://';
+$protocol_ssl = 'https://';
+$protocol_link = (Configuration::get('PS_SSL_ENABLED')) ? $protocol_ssl : $protocol;
+$protocol_content = (isset($useSSL) AND $useSSL AND Configuration::get('PS_SSL_ENABLED')) ? $protocol_ssl : $protocol;
+define('_PS_BASE_URL_', $protocol.$server_host);
+define('_PS_BASE_URL_SSL_', $protocol_ssl.$server_host);
 
 $smarty->assign(array(
-	'base_dir' => __PS_BASE_URI__,
-	'base_dir_ssl' => (Configuration::get('PS_SSL_ENABLED') ? 'https://' : 'http://').htmlspecialchars($_SERVER['HTTP_HOST'], ENT_COMPAT, 'UTF-8').__PS_BASE_URI__,
-	/* If the current page need SSL encryption and the shop allow it, then active it */
-	'protocol' => $protocol,
-	'img_ps_dir' => _PS_IMG_,
-	'img_cat_dir' => _THEME_CAT_DIR_,
-	'img_lang_dir' => _THEME_LANG_DIR_,
-	'img_prod_dir' => _THEME_PROD_DIR_,
-	'img_manu_dir' => _THEME_MANU_DIR_,
-	'img_sup_dir' => _THEME_SUP_DIR_,
-	'img_ship_dir' => _THEME_SHIP_DIR_,
-	'img_col_dir' => _THEME_COL_DIR_,
-	'img_dir' => _THEME_IMG_DIR_,
-	'css_dir' => _THEME_CSS_DIR_,
-	'js_dir' => _THEME_JS_DIR_,
+	'base_dir' => _PS_BASE_URL_.__PS_BASE_URI__,
+	'base_dir_ssl' => $protocol_link.$server_host.__PS_BASE_URI__,
+	'content_dir' => $protocol_content.$server_host.__PS_BASE_URI__,
+	'img_ps_dir' => $protocol_content.$server_host._PS_IMG_,
+	'img_cat_dir' => $protocol_content.$server_host._THEME_CAT_DIR_,
+	'img_lang_dir' => $protocol_content.$server_host._THEME_LANG_DIR_,
+	'img_prod_dir' => $protocol_content.$server_host._THEME_PROD_DIR_,
+	'img_manu_dir' => $protocol_content.$server_host._THEME_MANU_DIR_,
+	'img_sup_dir' => $protocol_content.$server_host._THEME_SUP_DIR_,
+	'img_ship_dir' => $protocol_content.$server_host._THEME_SHIP_DIR_,
+	'img_col_dir' => $protocol_content.$server_host._THEME_COL_DIR_,
+	'img_dir' => $protocol_content.$server_host._THEME_IMG_DIR_,
+	'css_dir' => $protocol_content.$server_host._THEME_CSS_DIR_,
+	'js_dir' => $protocol_content.$server_host._THEME_JS_DIR_,
 	'tpl_dir' => _PS_THEME_DIR_,
 	'modules_dir' => _MODULE_DIR_,
 	'mail_dir' => _MAIL_DIR_,
-	'pic_dir' => _THEME_PROD_PIC_DIR_,
+	'pic_dir' => $protocol_content.$server_host._THEME_PROD_PIC_DIR_,
 	'lang_iso' => $ps_language->iso_code,
 	'come_from' => 'http://'.htmlspecialchars($_SERVER['HTTP_HOST'], ENT_COMPAT, 'UTF-8').htmlentities($_SERVER['REQUEST_URI']),
 	'shop_name' => Configuration::get('PS_SHOP_NAME'),
@@ -122,8 +138,11 @@ $smarty->assign(array(
 	'currencies' => Currency::getCurrencies(),
 	'id_currency_cookie' => intval($currency->id),
 	'currency' => $currency,
+	'cookie' => $cookie,
 	'languages' => Language::getLanguages(),
 	'logged' => $cookie->isLogged(),
 	'page_name' => $page_name,
-	'customerName' => ($cookie->logged ? $cookie->customer_firstname.' '.$cookie->customer_lastname : false)));
+	'customerName' => ($cookie->logged ? $cookie->customer_firstname.' '.$cookie->customer_lastname : false),
+	'priceDisplay' => intval(Configuration::get('PS_PRICE_DISPLAY'))
+));
 ?>

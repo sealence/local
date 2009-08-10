@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -56,16 +56,6 @@ class		Feature extends ObjectModel
 		LEFT JOIN `'._DB_PREFIX_.'feature_lang` fl ON ( f.`id_feature` = fl.`id_feature` AND fl.`id_lang` = '.intval($id_lang).')
 		WHERE f.`id_feature` = '.intval($id_feature));
 	}
-	
-	static public function getFeatureByNameWithoutLang($name)
-	{
-		Tools::d('
-		SELECT f.`id_feature`
-		FROM `'._DB_PREFIX_.'feature` f
-		LEFT JOIN `'._DB_PREFIX_.'feature_lang` fl ON ( f.`id_feature` = fl.`id_feature`)
-		WHERE fl.`name` = \''.pSQL($name).'\' LIMIT 1');
-	}
-	
 	
 	/**
 	 * Get all features for a given language
@@ -131,7 +121,7 @@ class		Feature extends ObjectModel
 		return $result;
 	}
 	
-	/*
+	/**
 	* Count number of features for a given language
 	*
 	* @param integer $id_lang Language id
@@ -148,7 +138,7 @@ class		Feature extends ObjectModel
 		return ($result['nb']);
 	}
 	
-	/*
+	/**
 	* Create a feature from import
 	*
 	* @param integer $id_feature Feature id
@@ -157,18 +147,16 @@ class		Feature extends ObjectModel
 	*/	
 	static public function addFeatureImport($name)
 	{
-		$rq = Db::getInstance()->ExecuteS('SELECT `id_feature` FROM '._DB_PREFIX_.'feature_lang WHERE lower(`name`) LIKE \''.utf8_encode(trim(pSQL($name))).'\' GROUP BY `id_feature` LIMIT 1');
-		if (!$id_feature = intval($rq[0]['id_feature']))
-		{
-			// Feature doesn't exist, create it
-			$feature = new Feature();
-			$languages = Language::getLanguages();
-			foreach ($languages as $language)
-				$feature->name[$language['id_lang']] = strval($name);
-			$feature->add();
-			return $feature->id;
-		}
-		return intval($id_feature);
+		$rq = Db::getInstance()->getRow('SELECT `id_feature` FROM '._DB_PREFIX_.'feature_lang WHERE `name` = \''.pSQL($name).'\' GROUP BY `id_feature`');
+		if (!empty($rq))
+			return intval($rq['id_feature']);
+		// Feature doesn't exist, create it
+		$feature = new Feature();
+		$languages = Language::getLanguages();
+		foreach ($languages as $language)
+			$feature->name[$language['id_lang']] = strval($name);
+		$feature->add();
+		return $feature->id;
 	}
 }
 ?>

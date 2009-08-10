@@ -9,7 +9,7 @@ if (!isset($_SERVER['REQUEST_URI']) || $_SERVER['REQUEST_URI'] == '')
 if ($tmp = strpos($_SERVER['REQUEST_URI'], '?'))
 	$_SERVER['REQUEST_URI'] = substr($_SERVER['REQUEST_URI'], 0, $tmp);
 
-define('INSTALL_VERSION', '1.1.0.5');
+define('INSTALL_VERSION', '1.2.0.8');
 define('MINIMUM_VERSION_TO_UPDATE', '0.8.5');
 define('INSTALL_PATH', dirname(__FILE__));
 define('PS_BASE_URI', substr($_SERVER['REQUEST_URI'], 0, -1 * (strlen($_SERVER['REQUEST_URI']) - strrpos($_SERVER['REQUEST_URI'], '/')) - strlen(substr(substr($_SERVER['REQUEST_URI'],0,-1), strrpos( substr($_SERVER['REQUEST_URI'],0,-1),"/" )+1))));
@@ -124,6 +124,10 @@ if ($lm->getIncludeTradFilename())
 		txtError[43] = "<?php echo lang('Failed to write file to disk'); ?>";
 		txtError[44] = "<?php echo lang('File upload stopped by extension'); ?>";
 		txtError[45] = "<?php echo lang('Cannot convert your database\'s data to utf-8.'); ?>";
+		txtError[46] = "<?php echo lang('Invalid shop name'); ?>";
+		txtError[47] = "<?php echo lang('Your firstname contains some invalid characters'); ?>";
+		txtError[48] = "<?php echo lang('Your lastname contains some invalid characters'); ?>";
+		txtError[49] = "<?php echo lang('Your database server does not support the utf-8 charset.'); ?>";
 		txtError[999] = "<?php echo lang('No error code available.'); ?>";
 		//upgrader
 		txtError[27] = "<?php echo lang('This installer is too old.'); ?>";
@@ -136,7 +140,6 @@ if ($lm->getIncludeTradFilename())
 		txtError[34] = "<?php echo lang('Error while inserting content into the database'); ?>";
 		txtError[35] = "<?php echo lang('Unfortunately,'); ?>";
 		txtError[36] = "<?php echo lang('SQL errors have occurred.'); ?>";
-		txtError[37] = "<?php echo lang('Impossible to copy languages\'s flags.'); ?>";
 
 	</script>
 	<script type="text/javascript" src="controller.js"></script>

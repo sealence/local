@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -121,8 +121,8 @@ class Tax extends ObjectModel
 	{
 		return Db::getInstance()->ExecuteS('
 			DELETE FROM `'._DB_PREFIX_.'tax_zone`
-			WHERE `id_tax` = '.$this->id.'
-			AND `id_zone` = '.$id_zone.' LIMIT 1');
+			WHERE `id_tax` = '.intval($this->id).'
+			AND `id_zone` = '.intval($id_zone).' LIMIT 1');
 	}
 
 	/**
@@ -161,13 +161,13 @@ class Tax extends ObjectModel
 
 	static public function getApplicableTax($id_tax, $productTax)
 	{
-		global $cart, $defaultCountry;
+		global $cart, $cookie, $defaultCountry;
 
-		/* If customer have an address (implied that he is registered and log in) */
-		if (isset($cart) AND Validate::isLoadedObject($cart) AND $cart->id_address_invoice AND $address_ids = Address::getCountryAndState(intval($cart->id_address_invoice)))
+		$id_address_invoice = intval((Validate::isLoadedObject($cart) AND $cart->id_address_invoice) ? $cart->id_address_invoice : (isset($cookie->id_address_invoice) ? $cookie->id_address_invoice : 0));
+		/* If customer has an address (implies that he is registered and logged) */
+		if ($id_address_invoice AND $address_ids = Address::getCountryAndState($id_address_invoice))
 		{
 			$id_zone_country = Country::getIdZone(intval($address_ids['id_country']));
-
 			/* If customer's invoice address is inside a state */
 			if ($address_ids['id_state'])
 			{
@@ -187,7 +187,7 @@ class Tax extends ObjectModel
 				die(Tools::displayError('Unknown tax behavior!'));
 			}
 			/* Else getting country zone tax */
-			if (!$id_zone = Address::getZoneById(intval($cart->id_address_invoice)))
+			if (!$id_zone = Address::getZoneById($id_address_invoice))
 				die(Tools::displayError());
 			return $productTax * Tax::zoneHasTax(intval($id_tax), intval($id_zone));
 		}
@@ -219,5 +219,3 @@ class Tax extends ObjectModel
 		return $tax ? intval($tax['id_tax']) : false;
 	}
 }
-
-?>

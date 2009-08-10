@@ -1,6 +1,6 @@
-{if count($categoryProducts) > 1}
+{if count($categoryProducts) > 0}
 <script type="text/javascript">var middle = {$middlePosition};</script>
-<script type="text/javascript" src="{$base_dir}modules/productscategory/js/productscategory.js"></script>
+<script type="text/javascript" src="{$content_dir}modules/productscategory/js/productscategory.js"></script>
 <ul class="idTabs">
 	<li><a href="#idTab3">{l s='In the same category' mod='productscategory'}</a></li>
 </ul>
@@ -12,10 +12,10 @@
 		{foreach from=$categoryProducts item='categoryProduct' name=categoryProduct}
 		<li {if count($categoryProducts) < 6}style="width: {math equation="width / nbImages" width=94 nbImages=$categoryProducts|@count}%"{/if}>
 			<a href="{$link->getProductLink($categoryProduct.id_product, $categoryProduct.link_rewrite, $categoryProduct.category)}" title="{$categoryProduct.name|htmlspecialchars}">
-				<img src="{$img_prod_dir}{$categoryProduct.id_image}-medium.jpg" alt="{$categoryProduct.name|htmlspecialchars}" />
+				<img src="{$link->getImageLink($categoryProduct.link_rewrite, $categoryProduct.id_image, 'medium')}" alt="{$categoryProduct.name|htmlspecialchars}" />
 			</a><br/>
 			<a href="{$link->getProductLink($categoryProduct.id_product, $categoryProduct.link_rewrite, $categoryProduct.category)}" title="{$categoryProduct.name|htmlspecialchars}">
-			{$categoryProduct.name|truncate:15}
+			{$categoryProduct.name|truncate:15:'...'|escape:'htmlall':'UTF-8'}
 			</a>
 		</li>
 		{/foreach}

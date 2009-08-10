@@ -45,9 +45,9 @@ if (Tools::isSubmit('submitAccount'))
 	$smarty->assign('email_create', 1);
 
 	if (!Validate::isEmail($email = Tools::getValue('email')))
-		$errors[] = Tools::displayError('e-mail not valid');	
+		$errors[] = Tools::displayError('e-mail not valid');
 	elseif (!Validate::isPasswd(Tools::getValue('passwd')))
-		$errors[] = Tools::displayError('invalid password');	
+		$errors[] = Tools::displayError('invalid password');
 	elseif (Customer::customerExists($email))
 		$errors[] = Tools::displayError('someone has already registered with this e-mail address');	
 	elseif (!@checkdate(Tools::getValue('months'), Tools::getValue('days'), Tools::getValue('years')) AND !(Tools::getValue('months') == '' AND Tools::getValue('days') == '' AND Tools::getValue('years') == ''))
@@ -58,7 +58,7 @@ if (Tools::isSubmit('submitAccount'))
 		if (Tools::isSubmit('newsletter'))
 		{
 			$customer->ip_registration_newsletter = pSQL($_SERVER['REMOTE_ADDR']);
-			$customer->newsletter_date_add = pSQL(date('Y-m-d h:i:s'));
+			$customer->newsletter_date_add = pSQL(date('Y-m-d H:i:s'));
 		}
 		
 		$customer->birthday = (empty($_POST['years']) ? '' : intval($_POST['years']).'-'.intval($_POST['months']).'-'.intval($_POST['days']));
@@ -76,31 +76,39 @@ if (Tools::isSubmit('submitAccount'))
 		$errors = array_unique(array_merge($errors, $address->validateControler()));
 		if (!sizeof($errors))
 		{
-			$customer->active = 1;
-			if (!$customer->add())
-				$errors[] = Tools::displayError('an error occurred while creating your account');
+			if (!$country = new Country($address->id_country) OR !Validate::isLoadedObject($country))
+				die(Tools::displayError());
+			if (intval($country->contains_states) AND !intval($address->id_state))
+				$errors[] = Tools::displayError('this country require a state selection');
 			else
 			{
-				$address->id_customer = intval($customer->id);
-				if (!$address->add())
-					$errors[] = Tools::displayError('an error occurred while creating your address');
+				$customer->active = 1;
+				if (!$customer->add())
+					$errors[] = Tools::displayError('an error occurred while creating your account');
 				else
 				{
-					if (Mail::Send(intval($cookie->id_lang), 'account', 'Welcome!', 
-					array('{firstname}' => $customer->firstname, '{lastname}' => $customer->lastname, '{email}' => $customer->email, '{passwd}' => Tools::getValue('passwd')), $customer->email, $customer->firstname.' '.$customer->lastname))
+					$address->id_customer = intval($customer->id);
+					if (!$address->add())
+						$errors[] = Tools::displayError('an error occurred while creating your address');
+					else
+					{
+						if (!Mail::Send(intval($cookie->id_lang), 'account', 'Welcome!', 
+						array('{firstname}' => $customer->firstname, '{lastname}' => $customer->lastname, '{email}' => $customer->email, '{passwd}' => Tools::getValue('passwd')), $customer->email, $customer->firstname.' '.$customer->lastname))
+							$errors[] = Tools::displayError('cannot send email');
 						$smarty->assign('confirmation', 1);
-					$cookie->id_customer = intval($customer->id);
-					$cookie->customer_lastname = $customer->lastname;
-					$cookie->customer_firstname = $customer->firstname;
-					$cookie->passwd = $customer->passwd;
-					$cookie->logged = 1;
-					$cookie->email = $customer->email;
-					Module::hookExec('createAccount', array(
-						'_POST' => $_POST,
-						'newCustomer' => $customer
-					));
-					if ($back)
-						Tools::redirect($back);
+						$cookie->id_customer = intval($customer->id);
+						$cookie->customer_lastname = $customer->lastname;
+						$cookie->customer_firstname = $customer->firstname;
+						$cookie->passwd = $customer->passwd;
+						$cookie->logged = 1;
+						$cookie->email = $customer->email;
+						Module::hookExec('createAccount', array(
+							'_POST' => $_POST,
+							'newCustomer' => $customer
+						));
+						if ($back)
+							Tools::redirect($back);
+					}
 				}
 			}
 		}
@@ -138,7 +146,10 @@ if (Tools::isSubmit('SubmitLogin'))
 			$cookie->passwd = $customer->passwd;
 			$cookie->email = $customer->email;
 			if (Configuration::get('PS_CART_FOLLOWING') AND (empty($cookie->id_cart) OR Cart::getNbProducts($cookie->id_cart) == 0))
-				$cookie->id_cart = Cart::lastNoneOrderedCart($customer->id);
+				$cookie->id_cart = intval(Cart::lastNoneOrderedCart(intval($customer->id)));
+			$id_address = intval(Address::getFirstCustomerAddressId(intval($customer->id)));
+			$cookie->id_address_delivery = $id_address;
+			$cookie->id_address_invoice = $id_address;
 			Module::hookExec('authentication');
 			if ($back = Tools::getValue('back'))
 				Tools::redirect($back);
@@ -166,7 +177,7 @@ if (isset($create_account))
 		$selectedCountry = intval($_POST['id_country']);
 	elseif (isset($_SERVER['HTTP_ACCEPT_LANGUAGE']))
 	{
-		$array = split(',', $_SERVER['HTTP_ACCEPT_LANGUAGE']);
+		$array = explode(',', $_SERVER['HTTP_ACCEPT_LANGUAGE']);
 		if (Validate::isLanguageIsoCode($array[0]))
 		{
 			$selectedCountry = Country::getByIso($array[0]);

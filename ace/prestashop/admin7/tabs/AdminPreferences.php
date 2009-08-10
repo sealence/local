@@ -7,7 +7,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -23,20 +23,31 @@ class AdminPreferences extends AdminTab
 		$this->className = 'Configuration';
 		$this->table = 'configuration';
 
- 		$this->_fieldsGeneral = array(
+		$tmz = Tools::getTimezones();
+		$txs = Tax::getTaxes(intval($cookie->id_lang));
+		$timezone = array();
+		foreach ($tmz as $id => $name)
+			$timezone[] = array('id' => $id, 'name' => $name);
+		$taxes[] = array('id' => 0, 'name' => $this->l('None'));
+		foreach ($txs as $tax)
+			$taxes[] = array('id' => $tax['id_tax'], 'name' => $tax['name']);
+
+		$this->_fieldsGeneral = array(
 			'PS_BASE_URI' => array('title' => $this->l('PS directory:'), 'desc' => $this->l('Name of the PrestaShop directory on your Web server, bracketed by forward slashes (e.g., /shop/)'), 'validation' => 'isGenericName', 'type' => 'text', 'size' => 20, 'default' => '/'),
 			'PS_SHOP_ENABLE' => array('title' => $this->l('Enable Shop:'), 'desc' => $this->l('Activate or deactivate your shop. Deactivate your shop while you perform maintenance on it'), 'validation' => 'isBool', 'cast' => 'intval', 'type' => 'bool'),
 			'PS_MAINTENANCE_IP' => array('title' => $this->l('Maintenance IP:'), 'desc' => $this->l('IP address allowed to access the Front Office while the shop is disabled (e.g., 42.24.4.2)'), 'validation' => 'isGenericName', 'type' => 'text', 'size' => 15, 'default' => ''),
 			'PS_SSL_ENABLED' => array('title' => $this->l('Enable SSL'), 'desc' => $this->l('If your hosting provider allows SSL, you can activate SSL encryption (https://) for customer account identification and order processing'), 'validation' => 'isBool', 'cast' => 'intval', 'type' => 'bool', 'default' => '0'),
 			'PS_TOKEN_ENABLE' => array('title' => $this->l('Increase Front Office security'), 'desc' => $this->l('Enable or disable token on the Front Office in order to improve PrestaShop security'), 'validation' => 'isBool', 'cast' => 'intval', 'type' => 'bool', 'default' => '0'),
-			'PS_REWRITING_SETTINGS' => array('title' => $this->l('Friendly URL:'), 'desc' => $this->l('Enable only if your server allows URL rewriting (recommended)').'<p class="hint clear" style="display: block;">'.$this->l('If you turn on this feature, you must rename the .htaccess.txt file to .htaccess').'</p><div class="clear"></div>', 'validation' => 'isBool', 'required' => true, 'cast' => 'intval', 'type' => 'bool'),
+			'PS_REWRITING_SETTINGS' => array('title' => $this->l('Friendly URL:'), 'desc' => $this->l('Enable only if your server allows URL rewriting (recommended)').'<p class="hint clear" style="display: block;">'.$this->l('If you turn on this feature, you must').' <a href="?tab=AdminGenerator&token='.Tools::getAdminToken('AdminGenerator'.intval(Tab::getIdFromClassName('AdminGenerator')).intval($cookie->id_employee)).'">'.$this->l('generate a .htaccess file').'</a></p><div class="clear"></div>', 'validation' => 'isBool', 'cast' => 'intval', 'type' => 'bool'),
 			'PS_HELPBOX' => array('title' => $this->l('Back Office help boxes:'), 'desc' => $this->l('Enable yellow help boxes which are displayed under form fields in the Back Office'), 'validation' => 'isBool', 'cast' => 'intval', 'type' => 'bool'),
 			'PS_CONDITIONS' => array('title' => $this->l('Terms of service:'), 'desc' => $this->l('Require customers to accept or decline terms of service before processing the order'), 'validation' => 'isBool', 'cast' => 'intval', 'type' => 'bool'),
 			'PS_GIFT_WRAPPING' => array('title' => $this->l('Offer gift-wrapping:'), 'desc' => $this->l('Suggest gift-wrapping to customer and possibility of leaving a message'), 'validation' => 'isBool', 'cast' => 'intval', 'type' => 'bool'),
 			'PS_GIFT_WRAPPING_PRICE' => array('title' => $this->l('Gift-wrapping price:'), 'desc' => $this->l('Set a price for gift-wrapping'), 'validation' => 'isPrice', 'cast' => 'floatval', 'type' => 'price'),
+			'PS_GIFT_WRAPPING_TAX' => array('title' => $this->l('Gift-wrapping tax:'), 'desc' => $this->l('Set a tax for gift-wrapping'), 'validation' => 'isInt', 'cast' => 'intval', 'type' => 'select', 'list' => $taxes, 'identifier' => 'id'),
 			'PS_RECYCLABLE_PACK' => array('title' => $this->l('Offer recycled packaging:'), 'desc' => $this->l('Suggest recycled packaging to customer'), 'validation' => 'isBool', 'cast' => 'intval', 'type' => 'bool'),
-			'PS_CART_FOLLOWING' => array('title' => $this->l('Cart re-display at login:'), 'desc' => $this->l('After customer logs in, recall and display contents of his/her last shopping cart'), 'validation' => 'isBool', 'cast' => 'intval', 'type' => 'bool'),
-		);
+			'PS_CART_FOLLOWING' => array('title' => $this->l('Cart re-display at login:'), 'desc' => $this->l('After customer logs in, recall and display contents of his/her last shopping cart'), 'validation' => 'isBool', 'cast' => 'intval', 'type' => 'bool'));
+			if (function_exists('date_default_timezone_set'))
+				$this->_fieldsGeneral['PS_TIMEZONE'] = array('title' => $this->l('Timezone:'), 'validation' => 'isUnsignedId', 'cast' => 'intval', 'type' => 'select', 'list' => $timezone, 'identifier' => 'id');
 
 		parent::__construct();
 	}
@@ -145,8 +156,11 @@ class AdminPreferences extends AdminTab
 				{
 					if ($error = checkImage($_FILES['PS_LOGO'], 300000))
 						$this->_errors[] = $error;
-					elseif (!@imageResize($_FILES['PS_LOGO'], _PS_IMG_DIR_.'logo.jpg'))
+					if (!$tmpName = tempnam(_PS_TMP_IMG_DIR_, 'PS') OR !move_uploaded_file($_FILES['PS_LOGO']['tmp_name'], $tmpName))
+						return false;
+					elseif (!@imageResize($tmpName, _PS_IMG_DIR_.'logo.jpg'))
 						$this->_errors[] = 'an error occured during logo copy';
+					unlink($tmpName);
 				}
 				$this->uploadIco('PS_FAVICON', _PS_IMG_DIR_.'favicon.ico');
 			}

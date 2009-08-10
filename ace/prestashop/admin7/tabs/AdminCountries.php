@@ -7,7 +7,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -32,7 +32,7 @@ class AdminCountries extends AdminTab
 		'name' => array('title' => $this->l('Country'), 'width' => 130, 'filter_key' => 'b!name'),
 		'iso_code' => array('title' => $this->l('ISO code'), 'width' => 70, 'align' => 'center'),
 		'zone' => array('title' => $this->l('Zone'), 'width' => 100, 'filter_key' => 'z!name'),
-		'a!active' => array('title' => $this->l('Enabled'), 'align' => 'center', 'active' => 'status', 'type' => 'bool', 'orderby' => false));
+		'a!active' => array('title' => $this->l('Enabled'), 'align' => 'center', 'active' => 'status', 'type' => 'bool', 'orderby' => false, 'filter_key' => 'a!active'));
 	
 		$this->optionTitle = $this->l('Countries options');
 		$this->_fieldsOptions = array(

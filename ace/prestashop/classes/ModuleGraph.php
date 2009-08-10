@@ -7,11 +7,13 @@
   * @author Damien Metzger / Epitech
   * @copyright Epitech / PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   */
   
 abstract class ModuleGraph extends Module
 {
+	protected $_employee;
+	
 	/** @var integer array graph data */
 	protected	$_values = array();
 	
@@ -23,54 +25,107 @@ abstract class ModuleGraph extends Module
 		
 	/** @var ModuleGraphEngine graph engine */
 	protected $_render;
-		
-	abstract protected function getData();
 	
-	protected function setDateGraph($legend = false)
+	abstract protected function getData($layers);
+	
+	public function setEmployee($id_employee)
 	{
-		global $cookie;
-
-		if (isset($cookie->stats_granularity) AND $cookie->stats_granularity == 'd')
+		$this->_employee = new Employee(intval($id_employee));
+	}
+	public function setLang($id_lang)
+	{
+		$this->_id_lang = $id_lang;
+	}
+	
+	protected function setDateGraph($layers, $legend = false)
+	{
+		// Get dates in a manageable format
+		$fromArray = getdate(strtotime($this->_employee->stats_date_from));
+		$toArray = getdate(strtotime($this->_employee->stats_date_to));
+		
+		// If the granularity is inferior to 1 day
+		if ($this->_employee->stats_date_from == $this->_employee->stats_date_to)
 		{
 			if ($legend)
 				for ($i = 0; $i < 24; $i++)
 				{
-					$this->_values[$i] = 0;
-					$this->_legend[$i] = (strlen($i) == 1) ? ('0'.$i) : $i;
+					if ($layers == 1)
+						$this->_values[$i] = 0;
+					else
+						for ($j = 0; $j < $layers; $j++)
+							$this->_values[$j][$i] = 0;
+					$this->_legend[$i] = ($i % 2) ? '' : sprintf('%02dh', $i);
 				}
 			if (is_callable(array($this, 'setDayValues')))
-				$this->setDayValues();
+				$this->setDayValues($layers);
 		}
-		elseif (isset($cookie->stats_granularity) AND $cookie->stats_granularity == 'm')
+		// If the granularity is inferior to 1 month TODO : change to manage 28 to 31 days
+		elseif (strtotime($this->_employee->stats_date_to) - strtotime($this->_employee->stats_date_from) <= 2678400)
 		{
-			$max = date('t', mktime(0, 0, 0, $cookie->stats_month, 1, $cookie->stats_year)); 
 			if ($legend)
-				for ($i = 0; $i < $max; $i++)
+			{
+				$days = array();
+				if ($fromArray['mon'] == $toArray['mon'])
+					for ($i = $fromArray['mday']; $i <= $toArray['mday']; ++$i)
+						$days[] = $i;
+				else
 				{
-					$this->_values[$i] = 0;
-					$this->_legend[$i] = ($i != 0 && ($i + 1) % 5) ? '' : $i + 1;
+					$imax = date('t', mktime(0, 0, 0, $fromArray['mon'], 1, $fromArray['year']));
+					for ($i = $fromArray['mday']; $i <= $imax; ++$i)
+						$days[] = $i;
+					for ($i = 1; $i <= $toArray['mday']; ++$i)
+						$days[] = $i;
 				}
+				foreach ($days as $i)
+				{
+					if ($layers == 1)
+						$this->_values[$i] = 0;
+					else
+						for ($j = 0; $j < $layers; $j++)
+							$this->_values[$j][$i] = 0;
+					$this->_legend[$i] = ($i % 2) ? '' : sprintf('%02d', $i);
+				}
+			}
 			if (is_callable(array($this, 'setMonthValues')))
-				$this->setMonthValues();
+				$this->setMonthValues($layers);
 		}
+		// If the granularity is superior to 1 month
 		else
 		{
 			if ($legend)
 			{
-				$this->_values = array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-				$this->_legend = array('01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12');
+				$months = array();
+				if ($fromArray['year'] == $toArray['year'])
+					for ($i = $fromArray['mon']; $i <= $toArray['mon']; ++$i)
+						$months[] = $i;
+				else
+				{
+					for ($i = $fromArray['mon']; $i <= 12; ++$i)
+						$months[] = $i;
+					for ($i = 1; $i <= $toArray['mon']; ++$i)
+						$months[] = $i;
+				}
+				foreach ($months as $i)
+				{
+					if ($layers == 1)
+						$this->_values[$i] = 0;
+					else
+						for ($j = 0; $j < $layers; $j++)
+							$this->_values[$j][$i] = 0;
+					$this->_legend[$i] = sprintf('%02d', $i);
+				}
 			}
 			if (is_callable(array($this, 'setYearValues')))
-				$this->setYearValues();
+				$this->setYearValues($layers);
 		}
 	}
 	
-	public function create($render, $type, $width, $height)
+	public function create($render, $type, $width, $height, $layers)
 	{
 		require_once(dirname(__FILE__).'/../modules/'.$render.'/'.$render.'.php');
 		$this->_render = new $render($type);
 		
-		$this->getData();
+		$this->getData($layers);
 		$this->_render->createValues($this->_values);
 		$this->_render->setSize($width, $height);
 		$this->_render->setLegend($this->_legend);
@@ -88,7 +143,13 @@ abstract class ModuleGraph extends Module
 			return Tools::displayError('No graph engine selected');
 		if (!file_exists(dirname(__FILE__).'/../modules/'.$render.'/'.$render.'.php'))
 			return Tools::displayError('Graph engine selected unavailable');
+			
+		global $cookie;
+		$id_employee = intval($cookie->id_employee);
+		$id_lang = intval($cookie->id_lang);
 
+		if (!isset($params['layers']))
+			$params['layers'] = 1;
 		if (!isset($params['type']))
 			$params['type'] = 'column';
 		if (!isset($params['width']))
@@ -96,7 +157,9 @@ abstract class ModuleGraph extends Module
 		if (!isset($params['height']))
 			$params['height'] = 270;
 		
-		$drawer = 'drawer.php?render='.$render.'&module='.Tools::getValue('module').'&type='.$params['type'];
+		global $cookie;
+		$id_employee = intval($cookie->id_employee);
+		$drawer = 'drawer.php?render='.$render.'&module='.Tools::getValue('module').'&type='.$params['type'].'&layers='.$params['layers'].'&id_employee='.$id_employee.'&id_lang='.$id_lang;
 		if (isset($params['option']))
 			$drawer .= '&option='.$params['option'];
 			
@@ -104,23 +167,39 @@ abstract class ModuleGraph extends Module
 		return call_user_func(array($render, 'hookGraphEngine'), $params, $drawer);
 	}
 	
-	public static function getDateLike()
+	private static function getEmployee($employee = null)
 	{
-		global $cookie;
-		if (!isset($cookie->stats_year))
-			$cookie->stats_year = date('Y');
-		if (!isset($cookie->stats_granularity))
-			$cookie->stats_granularity = 'y';
+		if (!$employee)
+		{
+			global $cookie;
+			$employee = new Employee(intval($cookie->id_employee));
+		}
 		
-		$dateLike = '';
-		if ($year = intval($cookie->stats_year))
-			$dateLike .= $year.'-';
-		if ($cookie->stats_granularity != 'y' AND isset($cookie->stats_month) AND $month = intval($cookie->stats_month))
-			$dateLike .= (strlen($month) == 1 ? '0' : '').$month.'-';
-		if ($cookie->stats_granularity == 'd' AND isset($cookie->stats_day) AND $day = intval($cookie->stats_day))
-			$dateLike .= (strlen($day) == 1 ? '0' : '').$day.' ';
-		$dateLike .= '%';
-		return $dateLike;
+		if (empty($employee->stats_date_from) OR empty($employee->stats_date_to))
+		{
+			if (empty($employee->stats_date_from))
+				$employee->stats_date_from = date('Y').'-01-01';
+			if (empty($employee->stats_date_to))
+				$employee->stats_date_to = date('Y').'-12-31';
+			$employee->update();
+		}
+		return $employee;
+	}
+	
+	public function getDate()
+	{
+		return self::getDateBetween($this->_employee);
+	}
+	
+	public static function getDateBetween($employee = null)
+	{
+		$employee = self::getEmployee($employee);
+		return ' \''.$employee->stats_date_from.' 00:00:00\' AND \''.$employee->stats_date_to.' 23:59:59\' ';
+	}
+	
+	public function getLang()
+	{
+		return $this->_id_lang;
 	}
 }
 

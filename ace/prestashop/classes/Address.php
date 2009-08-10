@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -77,7 +77,7 @@ class		Address extends ObjectModel
 	private static $_idZones = array();
 	private static $_idCountries = array();
 
-	protected	$fieldsRequired = array('id_country', 'alias', 'lastname', 'firstname', 'address1', 'postcode', 'city');
+	protected	$fieldsRequired = array('alias', 'lastname', 'firstname');
 	protected	$fieldsSize = array('alias' => 32, 'company' => 32, 'lastname' => 32, 'firstname' => 32,
 									'address1' => 128, 'address2' => 128, 'postcode' => 12, 'city' => 64,
 									'other' => 300, 'phone' => 16, 'phone_mobile' => 16);
@@ -85,12 +85,13 @@ class		Address extends ObjectModel
 										'id_supplier' => 'isNullOrUnsignedId', 'id_country' => 'isUnsignedId', 'id_state' => 'isNullOrUnsignedId',
 										'alias' => 'isGenericName', 'company' => 'isGenericName', 'lastname' => 'isName',
 										'firstname' => 'isName', 'address1' => 'isAddress', 'address2' => 'isAddress',
-										'postcode' => 'isPostCode', 'city' => 'isCityName', 'other' => 'isGenericName',
+										'postcode' => 'isPostCode', 'city' => 'isCityName', 'other' => 'isMessage',
 										'phone' => 'isPhoneNumber', 'phone_mobile' => 'isPhoneNumber', 'deleted' => 'isBool');
 
 	protected 	$table = 'address';
 	protected 	$identifier = 'id_address';
 	protected	$_includeVars = array('addressType' => 'table');
+	protected	$_includeContainer = false;
 
 	/**
 	 * Build an address
@@ -225,20 +226,29 @@ class		Address extends ObjectModel
 		return $result;
 	}
 	
-	/*
-	* Specify if an adress is already in base
+	/**
+	* Specify if an address is already in base
 	*
-	* @param $id_address Adress id
+	* @param $id_address Address id
 	* @return boolean
 	*/	
 	static public function addressExists($id_address)
 	{
 		$row = Db::getInstance()->getRow('
 		SELECT `id_address`
-		FROM '._DB_PREFIX_.'adress a
+		FROM '._DB_PREFIX_.'address a
 		WHERE a.`id_address` = '.intval($id_address));
 		
 		return isset($row['id_address']);
+	}
+
+	static public function getFirstCustomerAddressId($id_customer, $active = true)
+	{
+		return Db::getInstance()->getValue('
+			SELECT `id_address`
+			FROM `'._DB_PREFIX_.'address`
+			WHERE `id_customer` = '.intval($id_customer).' AND `deleted` = 0'.($active ? ' AND `active` = 1' : '')
+		);
 	}
 }
 

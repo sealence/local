@@ -7,7 +7,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -45,6 +45,7 @@ class AdminOrdersStates extends AdminTab
 			$_POST['invoice'] = Tools::getValue('invoice');
 			$_POST['logable'] = Tools::getValue('logable');
 			$_POST['send_email'] = Tools::getValue('send_email');
+			$_POST['hidden'] = Tools::getValue('hidden');
 			if (!$_POST['send_email'])
 			{
 				$languages = Language::getLanguages();
@@ -143,6 +144,12 @@ class AdminOrdersStates extends AdminTab
 				</div>
 				<div class="margin-form">
 					<p>
+						<input type="checkbox" name="hidden"'.(($this->getFieldValue($obj, 'hidden') == 1) ? ' checked="checked"' : '').' id="hidden_on" value="1" />
+						<label class="t" for="hidden_on"> '.$this->l('Hide this state in order for customer').'</label>
+					</p>
+				</div>
+				<div class="margin-form">
+					<p>
 						<input type="checkbox" id="send_email" name="send_email" onclick="javascript:openCloseLayer(\'tpl\');"'.
 					(($this->getFieldValue($obj, 'send_email')) ? 'checked="checked"' : '').' value="1" />
 						<label class="t" for="send_email"> '.$this->l('Send e-mail to customer when order is changed to this status').'</label>
@@ -165,7 +172,7 @@ class AdminOrdersStates extends AdminTab
 					echo '		</select>';
 				}
 				echo '			<span class="hint" name="help_box">'.$this->l('Only letters, number and -_ are allowed').'<span class="hint-pointer">&nbsp;</span></span>
-								<img onclick="viewTemplates(\'template_select_'.$language['id_lang'].'\', '.$language['id_lang'].', \'../mails/'.$language['iso_code'].'/\', \'.html\');" src="../img/t/36.gif" class="pointer" alt="'.$this->l('Preview').'" title="'.$this->l('Preview').'" />
+								<img onclick="viewTemplates(\'template_select_'.$language['id_lang'].'\', '.$language['id_lang'].', \'../mails/'.$language['iso_code'].'/\', \'.html\');" src="../img/t/AdminFeatures.gif" class="pointer" alt="'.$this->l('Preview').'" title="'.$this->l('Preview').'" />
 						</div>';
 			}
 			$this->displayFlags($languages, $defaultLanguage, 'name¤template', 'template');

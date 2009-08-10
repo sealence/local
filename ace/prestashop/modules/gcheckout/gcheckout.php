@@ -13,7 +13,6 @@ class GCheckout extends PaymentModule
 
         parent::__construct();
 
-		$this->page = basename(__FILE__, '.php');
         $this->displayName = $this->l('Google Checkout');
         $this->description = $this->l('Google Checkout API implementation');
 		
@@ -117,6 +116,9 @@ class GCheckout extends PaymentModule
 
 	function hookPayment($params)
 	{
+		if (!$this->active)
+			return ;
+
 		global $smarty;
 		
 		require_once('library/googlecart.php');
@@ -131,8 +133,8 @@ class GCheckout extends PaymentModule
 			$googleCart->AddItem(new GoogleItem(utf8_decode($voucher['name']), utf8_decode($voucher['description']), 1, '-'.number_format(Tools::convertPrice($voucher['value_real'], $currency), 2, '.', '')));
 		$googleCart->AddShipping(new GooglePickUp($this->l('Shipping costs'), number_format(Tools::convertPrice($params['cart']->getOrderShippingCost($params['cart']->id_carrier), $currency), 2, '.', '')));
 		
-		$googleCart->SetEditCartUrl('http://'.$_SERVER['HTTP_HOST'].__PS_BASE_URI__.'order.php');      
-		$googleCart->SetContinueShoppingUrl('http://'.$_SERVER['HTTP_HOST'].__PS_BASE_URI__.'order-confirmation.php');  
+		$googleCart->SetEditCartUrl('http://'.$_SERVER['HTTP_HOST'].__PS_BASE_URI__.'order.php');
+		$googleCart->SetContinueShoppingUrl('http://'.$_SERVER['HTTP_HOST'].__PS_BASE_URI__.'order-confirmation.php');
 		$googleCart->SetRequestBuyerPhone(false);
 
 		$googleCart->SetMerchantPrivateData($params['cart']->id);
@@ -145,6 +147,9 @@ class GCheckout extends PaymentModule
 	
     function hookPaymentReturn($params)
     {
+		if (!$this->active)
+			return ;
+
 		return $this->display(__FILE__, 'payment_return.tpl');
     }
 }

@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -17,7 +17,7 @@ class		Supplier extends ObjectModel
 	public 		$id;
 	
 	/** @var integer supplier ID */
-	public $id_supplier;
+	public		$id_supplier;
 	
 	/** @var string Name */
 	public 		$name;
@@ -31,16 +31,40 @@ class		Supplier extends ObjectModel
 	/** @var string Object last modification date */
 	public 		$date_upd;
 	
+	/** @var string Friendly URL */
+	public 		$link_rewrite;
+	
+	/** @var string Meta title */
+	public 		$meta_title;
+
+	/** @var string Meta keywords */
+	public 		$meta_keywords;
+
+	/** @var string Meta description */
+	public 		$meta_description;	
+	
  	protected 	$fieldsRequired = array('name');
  	protected 	$fieldsSize = array('name' => 64);
  	protected 	$fieldsValidate = array('name' => 'isCatalogName');
 	
-	protected	$fieldsSizeLang = array('description' => 128);
-	protected	$fieldsValidateLang = array('description' => 'isGenericName');
+	protected	$fieldsSizeLang = array('description' => 128, 'meta_title' => 128, 'meta_description' => 128, 'meta_description' => 128);
+	protected	$fieldsValidateLang = array('description' => 'isGenericName', 'meta_title' => 'isGenericName', 'meta_description' => 'isGenericName', 'meta_keywords' => 'isGenericName');
 	
 	protected 	$table = 'supplier';
 	protected 	$identifier = 'id_supplier';
+	
+	public function __construct($id = NULL, $id_lang = NULL)
+	{
+		parent::__construct($id, $id_lang);
 		
+		$this->link_rewrite = $this->getLink();
+	}
+	
+	public function getLink()
+	{
+		return Tools::link_rewrite($this->name, false);
+	}
+	
 	public function getFields()
 	{
 		parent::validateFields();
@@ -55,7 +79,7 @@ class		Supplier extends ObjectModel
 	public function getTranslationsFieldsChild()
 	{
 		parent::validateFieldsLang();
-		return parent::getTranslationsFields(array('description'));
+		return parent::getTranslationsFields(array('description', 'meta_title', 'meta_keywords', 'meta_description'));
 	}
 	
 	/**
@@ -65,21 +89,33 @@ class		Supplier extends ObjectModel
 	  */
 	static public function getSuppliers($getNbProducts = false, $id_lang = 0, $active = false, $p = false, $n = false)
 	{
+		global $cookie;
+
 		if (!$id_lang)
 			$id_lang = Configuration::get('PS_LANG_DEFAULT');
 		$query = 'SELECT s.*, sl.`description`';
-		if ($getNbProducts) $query .= ' , COUNT(p.`id_product`) as nb_products';
 		$query .= ' FROM `'._DB_PREFIX_.'supplier` as s
 		LEFT JOIN `'._DB_PREFIX_.'supplier_lang` sl ON (s.`id_supplier` = sl.`id_supplier` AND sl.`id_lang` = '.intval($id_lang).')';
-		if ($getNbProducts)
-			$query .= ' LEFT JOIN `'._DB_PREFIX_.'product` as p ON (p.`id_supplier` = s.`id_supplier`)
-			'.($active ? 'WHERE p.`active` = 1' : '').'
-			GROUP BY s.`id_supplier`';
 		$query .= ' ORDER BY s.`name` ASC'.($p ? ' LIMIT '.((intval($p) - 1) * intval($n)).','.intval($n) : '');
 		$suppliers = Db::getInstance()->ExecuteS($query);
 		if ($suppliers === false)
 			return false;
-
+		if ($getNbProducts)
+			foreach ($suppliers as $key => $supplier)
+			{
+				$sql = '
+					SELECT p.`id_product`
+					FROM `'._DB_PREFIX_.'product` p
+					LEFT JOIN `'._DB_PREFIX_.'supplier` as m ON (m.`id_supplier`= p.`id_supplier`)
+					LEFT JOIN `'._DB_PREFIX_.'category_product` cp ON (cp.`id_product` = p.`id_product`)
+					INNER JOIN `'._DB_PREFIX_.'category_group` ctg ON (ctg.`id_category` = cp.`id_category`)
+					INNER JOIN `'._DB_PREFIX_.'customer_group` cg ON (cg.`id_group` = ctg.`id_group`)
+					WHERE (cg.`id_customer` = '.intval($cookie->id_customer).' OR ctg.`id_group` = 1)
+					AND m.`id_supplier` = '.intval($supplier['id_supplier']).'
+					GROUP BY p.`id_product`';
+				$result = Db::getInstance()->ExecuteS($sql);
+				$suppliers[$key]['nb_products'] = sizeof($result);
+			}
 		for ($i = 0; $i < sizeof($suppliers); $i++)
 			if (intval(Configuration::get('PS_REWRITING_SETTINGS')))
 				$suppliers[$i]['link_rewrite'] = Tools::link_rewrite($suppliers[$i]['name'], false);
@@ -104,10 +140,22 @@ class		Supplier extends ObjectModel
 			return $result['name'];
 		return false;
 	}
-	
+	static public function getIdByName($name)
+	{
+		$result = Db::getInstance()->getRow('
+		SELECT `id_supplier`
+		FROM `'._DB_PREFIX_.'supplier`
+		WHERE `name` = \''.pSQL($name).'\'');
+		if (isset($result['id_supplier']))
+			return intval($result['id_supplier']);
+		return false;
+ 	}
+
 	static public function getProducts($id_supplier, $id_lang, $p, $n, $orderBy = NULL, $orderWay = NULL, $getTotal = false, $active = true)
 	{
-	 	if (empty($orderBy)) $orderBy = 'name';
+		global $cookie;
+
+	 	if (empty($orderBy) OR $orderBy == 'position') $orderBy = 'name';
 	 	if (empty($orderWay)) $orderWay = 'ASC';
 			
 		if (!Validate::isOrderBy($orderBy) OR !Validate::isOrderWay($orderWay))
@@ -116,14 +164,19 @@ class		Supplier extends ObjectModel
 		/* Return only the number of products */
 		if ($getTotal)
 		{
-			$result = Db::getInstance()->getRow('
-			SELECT COUNT(p.`id_product`) AS total 
+			$result = Db::getInstance()->ExecuteS('
+			SELECT p.`id_product`
 			FROM `'._DB_PREFIX_.'product` p
-			WHERE p.id_supplier = '.intval($id_supplier)
-			.($active ? ' AND p.`active` = 1' : ''));
-			return isset($result) ? $result['total'] : 0;
+			LEFT JOIN `'._DB_PREFIX_.'category_product` cp ON (cp.`id_product` = p.`id_product`)
+			INNER JOIN `'._DB_PREFIX_.'category_group` ctg ON (ctg.`id_category` = cp.`id_category`)
+			INNER JOIN `'._DB_PREFIX_.'customer_group` cg ON (cg.`id_group` = ctg.`id_group`)
+			WHERE p.id_supplier = '.intval($id_supplier).'
+			AND (cg.`id_customer` = '.intval($cookie->id_customer).' OR ctg.`id_group` = 1'
+			.($active ? ' AND p.`active` = 1' : '')
+			.'GROUP BY p.`id_product`');
+			return intval(sizeof($result));
 		}
-	 
+
 		$sql = '
 			SELECT p.*, pl.`description`, pl.`description_short`, pl.`link_rewrite`, pl.`meta_description`, pl.`meta_keywords`, pl.`meta_title`, pl.`name`, i.`id_image`, il.`legend`, s.`name` AS supplier_name, tl.`name` AS tax_name, t.`rate`
 			FROM `'._DB_PREFIX_.'product` p
@@ -133,12 +186,19 @@ class		Supplier extends ObjectModel
 				LEFT JOIN `'._DB_PREFIX_.'tax` t ON t.`id_tax` = p.`id_tax`
 				LEFT JOIN `'._DB_PREFIX_.'tax_lang` tl ON (t.`id_tax` = tl.`id_tax` AND tl.`id_lang` = '.intval($id_lang).')
 				LEFT JOIN `'._DB_PREFIX_.'supplier` s ON s.`id_supplier` = p.`id_supplier`
+				LEFT JOIN `'._DB_PREFIX_.'category_product` cp ON (cp.`id_product` = p.`id_product`)
+				INNER JOIN `'._DB_PREFIX_.'category_group` ctg ON (ctg.`id_category` = cp.`id_category`)
+				INNER JOIN `'._DB_PREFIX_.'customer_group` cg ON (cg.`id_group` = ctg.`id_group`)
 			WHERE p.`id_supplier` = '.intval($id_supplier).($active ? ' AND p.`active` = 1' : '').'
+			AND (cg.`id_customer` = '.intval($cookie->id_customer).' OR ctg.`id_group` = 1)
+			GROUP BY p.`id_product`
 			ORDER BY '.(($orderBy == 'id_product') ? 'p.' : '').'`'.pSQL($orderBy).'` '.pSQL($orderWay).' 
 			LIMIT '.((intval($p) - 1) * intval($n)).','.intval($n);
 		$result = Db::getInstance()->ExecuteS($sql);
 		if (!$result)
 			return false;
+		if ($orderBy == 'price')
+			Tools::orderbyPrice($result, $orderWay);
 		return Product::getProductsProperties($id_lang, $result);
 	}
 	
@@ -161,7 +221,7 @@ class		Supplier extends ObjectModel
 		$row = Db::getInstance()->getRow('
 		SELECT `id_supplier`
 		FROM '._DB_PREFIX_.'supplier s
-		WHERE c.`id_supplier` = '.intval($id_supplier));
+		WHERE s.`id_supplier` = '.intval($id_supplier));
 		
 		return isset($row['id_supplier']);
 	}

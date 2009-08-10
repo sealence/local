@@ -47,14 +47,16 @@ function fillCombinaison(wholesale_price, price_impact, weight_impact, reference
 		getE('attribute_weight_impact').selectedIndex = 1;
 	}
 
-	if (image > 0)
-	{
-		for (i = 0; i < getE('id_image_attr').options.length; i++)
-			if (getE('id_image_attr').options[i].value == image)
-				getE('id_image_attr').selectedIndex = i;
-	}
-	else
-		getE('id_image_attr').selectedIndex = 0;
+	/* Reset all combination images */
+	combinationImages = $('#id_image_attr').find("input[@id^=id_image_attr_]");
+	combinationImages.each(function() {
+		this.checked = false;
+	});
+
+	/* Check combination images */
+	if (typeof(combination_images[id_product_attribute]) != 'undefined')
+		for (i = 0; i < combination_images[id_product_attribute].length; i++)
+			getE('id_image_attr_' + combination_images[id_product_attribute][i]).checked = true;
 
 	check_impact();
 	check_weight_impact();

@@ -7,11 +7,13 @@
   * @author Damien Metzger / Epitech
   * @copyright Epitech / PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   */
   
 abstract class ModuleGrid extends Module
 {
+	protected $_employee;
+	
 	/** @var string array graph data */
 	protected $_values = array();
 	
@@ -35,6 +37,15 @@ abstract class ModuleGrid extends Module
 
 	/** @var ModuleGridEngine grid engine */
 	protected $_render;
+	
+	public function setEmployee($id_employee)
+	{
+		$this->_employee = new Employee(intval($id_employee));
+	}
+	public function setLang($id_lang)
+	{
+		$this->_id_lang = $id_lang;
+	}
 	
 	public function create($render, $type, $width, $height, $start, $limit, $sort, $dir)
 	{
@@ -68,14 +79,18 @@ abstract class ModuleGrid extends Module
 			
 		$grider = 'grider.php?render='.$render.'&module='.Tools::getValue('module');
 		
+		global $cookie;
+		$grider .= '&id_employee='.intval($cookie->id_employee);
+		$grider .= '&id_lang='.intval($cookie->id_lang);
+		
 		if (!isset($params['width']) OR !Validate::IsUnsignedInt($params['width']))
 			$params['width'] = 600;
 		if (!isset($params['height']) OR !Validate::IsUnsignedInt($params['height']))
-			$params['height'] = 400;
+			$params['height'] = 920;
 		if (!isset($params['start']) OR !Validate::IsUnsignedInt($params['start']))
 			$params['start'] = 0;
 		if (!isset($params['limit']) OR !Validate::IsUnsignedInt($params['height']))
-			$params['limit'] = 20;
+			$params['limit'] = 40;
 
 		$grider .= '&width='.$params['width'];
 		$grider .= '&height='.$params['height'];
@@ -97,5 +112,14 @@ abstract class ModuleGrid extends Module
 	}
 	
 	abstract protected function getData();
+	
+	public function getDate()
+	{
+		return ModuleGraph::getDateBetween($this->_employee);
+	}
+	public function getLang()
+	{
+		return $this->_id_lang;
+	}
 }
 ?>

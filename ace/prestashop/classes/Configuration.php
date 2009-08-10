@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -158,9 +158,11 @@ class		Configuration extends ObjectModel
 
 		$resTab = array();
 		if (!$id_lang)
+		{
 			foreach ($keys AS $key)
 				if (key_exists($key, self::$_CONF))
 					$resTab[$key] = self::$_CONF[$key];
+		}
 		elseif (key_exists($id_lang, self::$_CONF_LANG))
 			foreach ($keys AS $key)
 				if (key_exists($key, self::$_CONF_LANG[intval($id_lang)]))

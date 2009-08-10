@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
   
@@ -174,7 +174,7 @@ class		Image extends ObjectModel
 	  * @param integer $id_product_old Source product ID
 	  * @param boolean $id_product_new Destination product ID
 	  */
-	static public function duplicateProductImages($id_product_old, $id_product_new)
+	static public function duplicateProductImages($id_product_old, $id_product_new, $combinationImages)
 	{
 		$imagesTypes = ImageType::getImagesTypes('products');
 		$result = Db::getInstance()->ExecuteS('
@@ -202,13 +202,41 @@ class		Image extends ObjectModel
 				SET id_image = '.intval($image->id).'
 				WHERE id_image = '.intval($saved_id).'
 				AND id_product = '.intval($id_product_new));
+				self::replaceAttributeImageAssociationId($combinationImages, intval($saved_id), intval($image->id));
             }
 			else
 				return false;
 		}
-		return true;
+		return self::duplicateAttributeImageAssociations($combinationImages);
 	}
-	
+
+	static private function replaceAttributeImageAssociationId(&$combinationImages, $saved_id, $id_image)
+	{
+		if (!isset($combinationImages['new']) OR !is_array($combinationImages['new']))
+			return ;
+		foreach ($combinationImages['new'] AS $id_product_attribute => $imageIds)
+			foreach ($imageIds AS $key => $imageId)
+				if (intval($imageId) == intval($saved_id))
+					$combinationImages['new'][$id_product_attribute][$key] = intval($id_image);
+	}
+
+	/**
+	* Duplicate product attribute image associations
+	* @param integer $id_product_attribute_old
+	* @return boolean
+	*/
+	static public function duplicateAttributeImageAssociations($combinationImages)
+	{
+		if (!isset($combinationImages['new']) OR !is_array($combinationImages['new']))
+			return true;
+		$query = 'INSERT INTO `'._DB_PREFIX_.'product_attribute_image` (`id_product_attribute`, `id_image`) VALUES ';
+		foreach ($combinationImages['new'] AS $id_product_attribute => $imageIds)
+			foreach ($imageIds AS $imageId)
+				$query .= '('.intval($id_product_attribute).', '.intval($imageId).'), ';
+		$query = rtrim($query, ', ');
+		return DB::getInstance()->Execute($query);
+	}
+
 	/**
 	  * Reposition image
 	  *
@@ -234,7 +262,7 @@ class		Image extends ObjectModel
 	
 	static public function getSize($type)
 	{
-	 	return Db::getInstance()->getRow('SELECT `width`, `height` FROM '._DB_PREFIX_.'image_type WHERE `name` = \''.$type.'\'');
+	 	return Db::getInstance()->getRow('SELECT `width`, `height` FROM '._DB_PREFIX_.'image_type WHERE `name` = \''.pSQL($type).'\'');
 	}
 }
 

@@ -7,7 +7,7 @@
   * @author Damien Metzger / Epitech
   * @copyright Epitech / PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   */
   
 class StatsOrigin extends ModuleGraph
@@ -19,7 +19,7 @@ class StatsOrigin extends ModuleGraph
         $this->name = 'statsorigin';
         $this->tab = 'Stats';
         $this->version = 1.0;
-		$this->page = basename(__FILE__, '.php');
+		
         parent::__construct();
 		
         $this->displayName = $this->l('Visitors origin');
@@ -28,20 +28,21 @@ class StatsOrigin extends ModuleGraph
 
 	function install()
 	{
-		return (parent::install() AND $this->registerHook('AdminStatsModules') AND $this->registerHook('adminOrder'));
+		return (parent::install() AND $this->registerHook('AdminStatsModules'));
 	}
-	
-	private function getOrigins()
+
+	private function getOrigins($dateBetween)
 	{
+		$directLink = $this->l('Direct link');
 		$result = mysql_query('
-		SELECT http_referer
-		FROM '._DB_PREFIX_.'connections
-		WHERE date_add LIKE \''.pSQL(ModuleGraph::getDateLike()).'\'');
-		$websites = array('Direct link' => 0);
+		SELECT c.http_referer
+		FROM '._DB_PREFIX_.'connections c
+		WHERE c.date_add BETWEEN '.$dateBetween);
+		$websites = array($directLink => 0);
 		while ($row = mysql_fetch_assoc($result))
 		{
 			if (!isset($row['http_referer']) OR empty($row['http_referer']))
-				++$websites['Direct link'];
+				++$websites[$directLink];
 			else
 			{
 				$website = preg_replace('/^www./', '', parse_url($row['http_referer'], PHP_URL_HOST));
@@ -55,31 +56,18 @@ class StatsOrigin extends ModuleGraph
 		arsort($websites);
 		return $websites;
 	}
-	
-	function hookAdminOrder($params)
-	{
-		$order = new Order(intval($params['id_order']));
-		$result = Db::getInstance()->getRow('
-		SELECT c.http_referer
-		FROM '._DB_PREFIX_.'connections c
-		LEFT JOIN '._DB_PREFIX_.'guest g ON c.id_guest = g.id_guest
-		WHERE g.id_customer = '.intval($order->id_customer).'
-		AND date_add < \''.pSQL($order->date_add).'\'
-		ORDER BY date_add DESC');
-		if (!isset($result['http_referer']))
-			return;
-		return '<fieldset style="width: 400px; margin-top: 10px;"><legend><img src="../modules/'.$this->name.'/logo.gif" /> '.$this->l('Origin').'</legend>
-		'.$this->l('This customer seems to come').' '.(empty($result['http_referer']) ? $this->l('from a direct link') :  $this->l('from').' <a href="'.$result['http_referer'].'">'.preg_replace('/^www./', '', parse_url($result['http_referer'], PHP_URL_HOST)).'</a>').'.</fieldset>';
-	}
-	
+
 	function hookAdminStatsModules()
 	{
-		$websites = $this->getOrigins();
+		$websites = $this->getOrigins(ModuleGraph::getDateBetween());
 		
-		$this->_html = '<fieldset class="width3"><legend><img src="../modules/'.$this->name.'/logo.gif" /> Origin</legend>';
+		$this->_html = '<fieldset class="width3 center"><legend><img src="../modules/'.$this->name.'/logo.gif" /> Origin</legend>';
 		if (sizeof($websites))
 		{
 			$this->_html .= '
+			<p><img src="../img/admin/down.gif" />'. $this->l('Here is the percentage of the 10 most popular referrer websites by which visitors went through to get on your shop.').'</p>
+			'.ModuleGraph::engine(array('type' => 'pie')).'<br /><br />
+			<div style="overflow-y: scroll; height: 600px;">
 			<table class="table" border="0" cellspacing="0" cellspacing="0">
 				<tr>
 					<th style="width:400px;">'.$this->l('Origin').'</th>
@@ -87,23 +75,37 @@ class StatsOrigin extends ModuleGraph
 				</tr>';
 			foreach ($websites as $website => $total)
 				$this->_html .= '<tr><td>'.(!strstr($website, ' ') ? '<a href="http://'.$website.'">' : '').$website.(!strstr($website, ' ') ? '</a>' : '').'</td><td style="text-align: right">'.$total.'</td></tr>';
-			$this->_html .= '</table><br /><center>'.ModuleGraph::engine(array('type' => 'pie')).'</center>';
+			$this->_html .= '</table></div>';
 		}
 		else
 			$this->_html .= '<p><strong>'.$this->l('Direct links only').'</strong></p>';
-		$this->_html .= '</fieldset>';
+		$this->_html .= '</fieldset><br />
+		<fieldset class="width3"><legend><img src="../img/admin/comment.gif" /> '.$this->l('Guide').'</legend>
+		<h2>'.$this->l('What is a referrer website?').'</h2>
+			<p>
+				'.$this->l('When visiting a webpage, the referrer is the URL of the previous webpage from which a link was followed.').'<br />
+				'.$this->l('A referrer enables you to know which keywords are entered by visitors in search engines when they try to get on your shop; and also to optimize your web promotion.').'<br /><br />
+				'. $this->l('A referrer can be:').'
+				<ul>
+					<li class="bullet">'. $this->l('Someone who put a link on his website towards your shop').'</li>
+					<li class="bullet">'. $this->l('A partner with whom you made a link exchange in order to bring in sales or attract new customers').'</li>
+				</ul>
+			</p>
+		</fieldset>';
 		return $this->_html;
 	}
 		
-	protected function getData()
+	protected function getData($layers)
 	{
 		$this->_titles['main'] = $this->l('10 first websites');
-		$websites = $this->getOrigins();
+		$websites = $this->getOrigins($this->getDate());
 		$total = 0;
 		$total2 = 0;
 		$i = 0;
 		foreach ($websites as $website => $totalRow)
 		{
+			if (!$totalRow)
+				continue;
 			$total += $totalRow;
 			if ($i++ < 9)
 			{

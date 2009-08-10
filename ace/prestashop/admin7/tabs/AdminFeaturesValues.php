@@ -7,7 +7,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -45,7 +45,7 @@ class AdminFeaturesValues extends AdminTab
 		</script>
 		<form action="'.$currentIndex.'&submitAdd'.$this->table.'=1&token='.($token ? $token : $this->token).'" method="post">
 		'.($obj->id ? '<input type="hidden" name="id_feature_value" value="'.$obj->id.'" />' : '').'
-			<fieldset class="width3"><legend><img src="../img/t/36.gif" />'.$this->l('Value').'</legend>
+			<fieldset class="width3"><legend><img src="../img/t/AdminFeatures.gif" />'.$this->l('Value').'</legend>
 				<label>'.$this->l('Value:').' </label>
 				<div class="margin-form">';
 		foreach ($languages as $language)

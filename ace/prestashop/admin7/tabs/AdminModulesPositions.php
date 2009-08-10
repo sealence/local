@@ -7,7 +7,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -148,7 +148,14 @@ class AdminModulesPositions extends AdminTab
 	public function displayList()
 	{
 		global $currentIndex;
-
+		echo '
+		<script type="text/javascript" src="../js/jquery/jquery.tablednd_0_5.js"></script>
+		<script type="text/javascript">
+			var token = \''.$this->token.'\';
+			var come_from = \'AdminModulesPositions\';
+		</script>
+		<script type="text/javascript" src="../js/admin-dnd.js"></script>
+		';
 		echo '<a href="'.$currentIndex.'&addToHook'.($this->displayKey ? '&show_modules='.$this->displayKey : '').'&token='.$this->token.'"><img src="../img/admin/add.gif" border="0" /> <b>'.$this->l('Transplant a module').'</b></a><br /><br />';
 
 		// Print select list
@@ -166,10 +173,10 @@ class AdminModulesPositions extends AdminTab
 				ksort($cm);
 				foreach ($cm AS $module)
 					echo '
-					<option value="'.$module->id.'" '.($this->displayKey == $module->id ? 'selected="selected" ' : '').'>'.$module->displayName.'</option>';
+					<option value="'.intval($module->id).'" '.($this->displayKey == $module->id ? 'selected="selected" ' : '').'>'.$module->displayName.'</option>';
 			echo '
 			</select><br /><br />
-			<input type="checkbox" id="hook_position" onChange="autoUrlNoList(\'hook_position\', \''.$currentIndex.'&token='.$this->token.'&show_modules='.intval(Tools::getValue('show_modules')).'&hook_position=\')" '.(Tools::getValue('hook_position') ? 'checked="checked" ' : '').' />&nbsp;'.$this->l('Display non-positionnable hook').'
+			<input type="checkbox" id="hook_position" onclick="autoUrlNoList(\'hook_position\', \''.$currentIndex.'&token='.$this->token.'&show_modules='.intval(Tools::getValue('show_modules')).'&hook_position=\')" '.(Tools::getValue('hook_position') ? 'checked="checked" ' : '').' />&nbsp;'.$this->l('Display non-positionnable hook').'
 		</form>';
 
 		// Print hook list
@@ -185,8 +192,8 @@ class AdminModulesPositions extends AdminTab
 			$nbModules = sizeof($modules);
 			echo '
 			<a name="'.$hook['name'].'"/>
-			<table cellpadding="0" cellspacing="0" class="table width3 space">
-			<tr><th colspan="4">'.$hook['title'].' - <span style="color: red">'.$nbModules.'</span> '.(($nbModules > 1) ? $this->l('modules') : $this->l('module'));
+			<table cellpadding="0" cellspacing="0" class="table width3 space'.($nbModules >= 2? ' tableDnD' : '' ).'" id="'.$hook['id_hook'].'">
+			<tr class="nodrag nodrop"><th colspan="4">'.$hook['title'].' - <span style="color: red">'.$nbModules.'</span> '.(($nbModules > 1) ? $this->l('modules') : $this->l('module'));
 			if (!empty($hook['description']))
 				echo '&nbsp;<span style="font-size:0.8em; font-weight: normal">['.$hook['description'].']</span>';
 			echo '</th></tr>';
@@ -202,14 +209,14 @@ class AdminModulesPositions extends AdminTab
 				foreach ($instances AS $position => $instance)
 				{
 					echo '
-					<tr'.($irow++ % 2 ? ' class="alt_row"' : '').' style="height: 42px;">';
+					<tr id="'.$hook['id_hook'].'_'.$instance->id.'"'.($irow++ % 2 ? ' class="alt_row"' : '').' style="height: 42px;">';
 					if (!$this->displayKey)
 					{
 						echo '
-						<td width="40">'.intval($position).'</td>
-						<td width="40">
-							'.($position != 1 ? ('<a href="'.$currentIndex.'&id_module='.$instance->id.'&id_hook='.$hook['id_hook'].'&direction=0&token='.$this->token.'&changePosition='.rand().'#'.$hook['name'].'"><img src="../img/admin/up.gif" alt="'.$this->l('Up').'" title="'.$this->l('Up').'" /></a><br />') : '').'
-							'.($position < sizeof($instances) ? ('<a href="'.$currentIndex.'&id_module='.$instance->id.'&id_hook='.$hook['id_hook'].'&direction=1&token='.$this->token.'&changePosition='.rand().'#'.$hook['name'].'"><img src="../img/admin/down.gif" alt="'.$this->l('Down').'" title="'.$this->l('Down').'" /></a>') : '').'
+						<td class="positions" width="40">'.intval($position).'</td>
+						<td'.($nbModules >= 2? ' class="dragHandle"' : '').' id="td_'.$hook['id_hook'].'_'.$instance->id.'" width="40">
+						<a'.($position == 1 ? ' style="display: none;"' : '' ).' href="'.$currentIndex.'&id_module='.$instance->id.'&id_hook='.$hook['id_hook'].'&direction=0&token='.$this->token.'&changePosition='.rand().'#'.$hook['name'].'"><img src="../img/admin/up.gif" alt="'.$this->l('Up').'" title="'.$this->l('Up').'" /></a><br />
+							<a '.($position == sizeof($instances) ? ' style="display: none;"' : '').'href="'.$currentIndex.'&id_module='.$instance->id.'&id_hook='.$hook['id_hook'].'&direction=1&token='.$this->token.'&changePosition='.rand().'#'.$hook['name'].'"><img src="../img/admin/down.gif" alt="'.$this->l('Down').'" title="'.$this->l('Down').'" /></a>
 						</td>
 						<td style="padding-left: 10px;">
 						';
@@ -248,6 +255,7 @@ class AdminModulesPositions extends AdminTab
 		}
 		$excepts = strval(Tools::getValue('exceptions', ((isset($slModule) AND Validate::isLoadedObject($slModule)) ? $excepts : '')));
 		$modules = Module::getModulesInstalled(0);
+
 		$instances = array();
 		foreach ($modules AS $module)
 			if ($tmpInstance = Module::getInstanceById($module['id_module']))
@@ -259,7 +267,7 @@ class AdminModulesPositions extends AdminTab
 		<form action="'.$currentIndex.'&token='.$this->token.'" method="post">';
 		if ($this->displayKey)
 			echo '<input type="hidden" name="show_modules" value="'.$this->displayKey.'" />';
-		echo '<fieldset class="width3" style="width:700px;"><legend><img src="../img/t/22.gif" />'.$this->l('Transplant a module').'</legend>
+		echo '<fieldset class="width3" style="width:700px;"><legend><img src="../img/t/AdminModulesPositions.gif" />'.$this->l('Transplant a module').'</legend>
 				<label>'.$this->l('Module').' :</label>
 				<div class="margin-form">
 					<select name="id_module"'.(Tools::isSubmit('editGraft') ? ' disabled="disabled"' : '').'>';

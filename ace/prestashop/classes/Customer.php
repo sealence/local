@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -53,7 +53,10 @@ class		Customer extends ObjectModel
 	public $last_passwd_gen;
 	
 	/** @var boolean Status */
-	public 		$active = 1;
+	public 		$active = true;
+	
+	/** @var boolean True if carrier has been deleted (staying in database as deleted) */
+	public 		$deleted = 0;
 
 	/** @var string Object creation date */
 	public 		$date_add;
@@ -95,7 +98,7 @@ class		Customer extends ObjectModel
 		$fields['active'] = intval($this->active);
 		$fields['date_add'] = pSQL($this->date_add);
 		$fields['date_upd'] = pSQL($this->date_upd);
-
+		$fields['deleted'] = intval($this->deleted);
 		return $fields;
 	}
 
@@ -103,15 +106,20 @@ class		Customer extends ObjectModel
 	{
 		$this->birthday = (empty($this->years) ? $this->birthday : intval($this->years).'-'.intval($this->months).'-'.intval($this->days));
 		$this->secure_key = md5(uniqid(rand(), true));
-		$this->last_passwd_gen = date('Y-m-d H:i:s', strtotime('-'.Configuration::get('PS_PASSWD_TIME_FRONT')));
-	 	return parent::add($autodate, $nullValues);
+		$this->last_passwd_gen = date('Y-m-d H:i:s', strtotime('-'.Configuration::get('PS_PASSWD_TIME_FRONT').'minutes'));
+	 	$res = parent::add($autodate, $nullValues);
+		if (!$res)
+			return false;
+
+		$row = array('id_customer' => intval($this->id), 'id_group' => 1);
+		return Db::getInstance()->AutoExecute(_DB_PREFIX_.'customer_group', $row, 'INSERT');
 	}
 
 	public function update($nullValues = false)
 	{
 		$this->birthday = (empty($this->years) ? $this->birthday : intval($this->years).'-'.intval($this->months).'-'.intval($this->days));
 		if ($this->newsletter AND !$this->newsletter_date_add)
-			$this->newsletter_date_add = date('Y-m-d h:i:s');
+			$this->newsletter_date_add = date('Y-m-d H:i:s');
 	 	return parent::update(true);
 	}
 	
@@ -154,7 +162,9 @@ class		Customer extends ObjectModel
 		$result = Db::getInstance()->GetRow('
 		SELECT *
 		FROM `'._DB_PREFIX_	.'customer`
-		WHERE `active` = 1 AND `email` = \''.pSQL($email).'\''.(isset($passwd) ? 'AND `passwd` = \''.md5(pSQL(_COOKIE_KEY_.$passwd)).'\'' : ''));
+		WHERE `active` = 1
+		AND `email` = \''.pSQL($email).'\''.(isset($passwd) ? 'AND `passwd` = \''.md5(pSQL(_COOKIE_KEY_.$passwd)).'\'
+		AND `deleted` = 0' : ''));
 
 		if (!$result)
 			return false;
@@ -179,7 +189,8 @@ class		Customer extends ObjectModel
 		SELECT `id_customer`
 		FROM `'._DB_PREFIX_.'customer`
 		WHERE `id_customer` = \''.intval($id_customer).'\'
-		AND active = 1');
+		AND active = 1
+		AND `deleted` = 0');
 		if (isset($result['id_customer']))
 			return false;
         return true;
@@ -377,15 +388,7 @@ class		Customer extends ObjectModel
 		SELECT COUNT(`id_order`) AS nb_orders, SUM(`total_paid`) AS total_orders
 		FROM `'._DB_PREFIX_.'orders` o
 		WHERE o.`id_customer` = '.intval($this->id).'
-		AND (
-			SELECT os.`invoice`
-			FROM `'._DB_PREFIX_.'orders` oo
-			LEFT JOIN `'._DB_PREFIX_.'order_history` oh ON oh.`id_order` = oo.`id_order`
-			LEFT JOIN `'._DB_PREFIX_.'order_state` os ON os.`id_order_state` = oh.`id_order_state`
-			WHERE oo.`id_order` = o.`id_order`
-			ORDER BY oh.`date_add` DESC, oh.`id_order_history` DESC
-			LIMIT 1
-		) = 1');
+		AND o.valid = 1');
 
 		$result2 = Db::getInstance()->getRow('
 		SELECT MAX(c.`date_add`) AS last_visit
@@ -445,6 +448,47 @@ public function getLastConnections()
 		WHERE p.`id_customer` = '.intval($id_customer));
 		
 		return isset($row['id_customer']);
+	}
+	
+	public function cleanGroups()
+	{
+		Db::getInstance()->Execute('DELETE FROM `'._DB_PREFIX_.'customer_group` WHERE `id_customer` = '.intval($this->id).' AND `id_group` != 1');
+	}
+	
+	public function addGroups($groups)
+	{
+		foreach ($groups as $group)
+		{
+			$row = array('id_customer' => intval($this->id), 'id_group' => intval($group));
+			Db::getInstance()->AutoExecute(_DB_PREFIX_.'customer_group', $row, 'INSERT');
+		}
+	}
+	
+	public function getGroups()
+	{
+		$groups = array();
+		$result = Db::getInstance()->ExecuteS('
+		SELECT cg.`id_group`
+		FROM '._DB_PREFIX_.'customer_group cg
+		WHERE cg.`id_customer` = '.intval($this->id));
+		foreach ($result as $group)
+			$groups[] = $group['id_group'];
+		return $groups;
+	}
+	
+	public function isUsed()
+	{
+		return false;
+	}
+	
+	public function isMemberOfGroup($id_group)
+	{
+		$result = Db::getInstance()->getRow('
+		SELECT count(cg.`id_group`) as nb
+		FROM '._DB_PREFIX_.'customer_group cg
+		WHERE cg.`id_customer` = '.intval($this->id).'
+		AND cg.`id_group` = '.intval($id_group));
+		return $result['nb'];
 	}
 }
 

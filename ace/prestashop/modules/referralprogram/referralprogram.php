@@ -8,9 +8,8 @@ class ReferralProgram extends Module
 		$this->tab = 'Tools';
 		$this->version = '1.4';
 
-		parent::__construct(); /* The parent construct is required for translations */
+		parent::__construct();
 
-		$this->page = basename(__FILE__, '.php');
 		$this->confirmUninstall = $this->l('All sponsor and friends would be deleted. Do you really want to uninstall this module ?');
 		$this->displayName = $this->l('Customer referral program');
 		$this->description = $this->l('Integrate a referral program system to your shop.');
@@ -23,9 +22,12 @@ class ReferralProgram extends Module
 		));
 		$this->_configuration['REFERRAL_DISCOUNT_DESCRIPTION'] = Configuration::getInt('REFERRAL_DISCOUNT_DESCRIPTION');
 
-		$this->_xmlFile = dirname(__FILE__).'/referralprogram.xml';
-		
-		include_once(dirname(__FILE__).'/ReferralProgramModule.php');
+		$path = dirname(__FILE__);
+		if (strpos(__FILE__, 'Module.php') !== false)
+			$path .= '/../modules/'.$this->name;
+			
+		$this->_xmlFile = $path.'/referralprogram.xml';
+		include_once($path.'/ReferralProgramModule.php');
 	}
 
 	public function install()
@@ -68,9 +70,6 @@ class ReferralProgram extends Module
 			`date_add` DATETIME NOT NULL,
 			`date_upd` DATETIME NOT NULL,
 			PRIMARY KEY (`id_referralprogram`),
-			INDEX index_referralprogram_sponsor (`id_sponsor`),
-			UNIQUE KEY `index_unique_referralprogram_customer` (`id_customer`),
-			UNIQUE KEY `index_unique_referralprogram_discount` (`id_discount`),
 			UNIQUE KEY `index_unique_referralprogram_email` (`email`)
 		) DEFAULT CHARSET=utf8 ;');
 	}
@@ -170,13 +169,13 @@ class ReferralProgram extends Module
 			if ($key == $line)
 				return 0;
 		}
-		if (!eregi('^'.$section.'_', $key))
+		if (!preg_match('/^'.$section.'_/i', $key))
 			return 0;
-		$key = eregi_replace('^'.$section.'_', '', $key);
-		$field = htmlspecialchars($field);
+		$key = preg_replace('/^'.$section.'_/i', '', $key);
+		$field = Tools::htmlentitiesDecodeUTF8(htmlspecialchars($field));
 		if (!$field)
 			return 0;
-		return ("\n\t\t".'<'.$key.'>'.$field.'</'.$key.'>');
+		return ("\n\t\t".'<'.$key.'><![CDATA['.$field.']]></'.$key.'>');
 	}
 
 	public function getContent()
@@ -273,46 +272,37 @@ class ReferralProgram extends Module
 				$this->_html .= $this->displayError($this->l('Your text is empty.'));
 		}
 
-		$this->_html .= '<br />
-			<script type="text/javascript" src="'._PS_JS_DIR_.'tinymce/jscripts/tiny_mce/tiny_mce.js"></script>
-			<script language="javascript" type="text/javascript">
-				tinyMCE.init({
-					language : "';
-		$iso = Language::getIsoById(intval($cookie->id_lang));
-		$this->_html .= ((!file_exists(PS_ADMIN_DIR.'/../js/tinymce/jscripts/tiny_mce/langs/'.$iso.'.js')) ? 'en' : $iso).'",
-					mode : "textareas",
+		$this->_html .= '
+		<script type="text/javascript" src="'.__PS_BASE_URI__.'js/tinymce/jscripts/tiny_mce/jquery.tinymce.js"></script>
+		<script type="text/javascript">
+		function tinyMCEInit(element)
+		{
+			$().ready(function() {
+				$(element).tinymce({
+					// Location of TinyMCE script
+					script_url : \''.__PS_BASE_URI__.'js/tinymce/jscripts/tiny_mce/tiny_mce.js\',
+					// General options
 					theme : "advanced",
-					theme_advanced_buttons1 : "bold, italic, underline, fontselect, fontsizeselect",
-					theme_advanced_buttons2 : "forecolor, backcolor, separator, justifyleft, justifycenter, justifyright, justifyfull, separator, bullist, numlist, separator, undo, redo, separator, link, unlink, separator, code",
-					theme_advanced_buttons3 : "",
+					plugins : "safari,pagebreak,style,layer,table,advimage,advlink,inlinepopups,preview,media,searchreplace,contextmenu,paste,directionality,fullscreen",
+					// Theme options
+					theme_advanced_buttons1 : "newdocument,|,bold,italic,underline,strikethrough,|,justifyleft,justifycenter,justifyright,justifyfull,styleselect,formatselect,fontselect,fontsizeselect",
+					theme_advanced_buttons2 : "cut,copy,paste,pastetext,pasteword,|,search,replace,|,bullist,numlist,|,outdent,indent,blockquote,|,undo,redo,|,link,unlink,anchor,image,cleanup,help,code,|,insertdate,inserttime,preview,|,forecolor,backcolor",
+					theme_advanced_buttons3 : "tablecontrols,|,hr,removeformat,visualaid,|,sub,sup,|,charmap,media,|,|,ltr,rtl,|,fullscreen",
+					theme_advanced_buttons4 : "insertlayer,moveforward,movebackward,absolute,|,styleprops,|,cite,abbr,acronym,del,ins,attribs,|,pagebreak",
 					theme_advanced_toolbar_location : "top",
 					theme_advanced_toolbar_align : "left",
-					plugins : "contextmenu, directionality, media, paste, preview, safari",
-					theme_advanced_buttons3_add : "ltr,rtl,pastetext,pasteword,selectall",
-					theme_advanced_buttons1_add : "media,preview",
-					paste_create_paragraphs : false,
-					paste_create_linebreaks : false,
-					paste_use_dialog : true,
-					paste_auto_cleanup_on_paste : true,
-					paste_convert_middot_lists : false,
-					paste_unindented_list_class : "unindentedList",
-					paste_convert_headers_to_strong : true,
-					paste_insert_word_content_callback : "convertWord",
-					plugin_preview_width : "500",
-					plugin_preview_height : "600",
-					extended_valid_elements : "a[name|href|target|title|onclick],img[class|src|border=0|alt|title|hspace|vspace|width|height|align|onmouseover|onmouseout|name],hr[class|width|size|noshade],font[face|size|color|style],span[class|align|style]"
+					theme_advanced_statusbar_location : "bottom",
+					theme_advanced_resizing : true,
+					content_css : "'.__PS_BASE_URI__.'themes/'._THEME_NAME_.'/css/global.css",
+					// Drop lists for link/image/media/template dialogs
+					template_external_list_url : "lists/template_list.js",
+					external_link_list_url : "lists/link_list.js",
+					external_image_list_url : "lists/image_list.js",
+					media_external_list_url : "lists/media_list.js"
 				});
-				function convertWord(type, content)
-				{
-					switch (type)
-					{
-						case "before":
-							break;
-						case "after":
-							break;
-					}
-					return content;
-				}
+			});
+		}
+		tinyMCEInit(\'textarea.rte\');
 		</script>
 		<script language="javascript">id_language = Number('.$defaultLanguage.');</script>
 		<form method="post" action="'.$_SERVER['REQUEST_URI'].'" enctype="multipart/form-data">
@@ -322,7 +312,7 @@ class ReferralProgram extends Module
 		{
 			$this->_html .= '
 			<div id="cpara_'.$language['id_lang'].'" style="display: '.($language['id_lang'] == $defaultLanguage ? 'block' : 'none').';float: left;">
-				<textarea cols="120" rows="25" id="body_paragraph_'.$language['id_lang'].'" name="body_paragraph_'.$language['id_lang'].'">'.($xml ? stripslashes(htmlspecialchars($xml->body->{'paragraph_'.$language['id_lang']})) : '').'</textarea>
+				<textarea class="rte" cols="120" rows="25" id="body_paragraph_'.$language['id_lang'].'" name="body_paragraph_'.$language['id_lang'].'">'.($xml ? stripslashes(htmlspecialchars($xml->body->{'paragraph_'.$language['id_lang']})) : '').'</textarea>
 			</div>';
 		}
 		$this->_html .= $this->displayFlags($languages, $defaultLanguage, $divLangName, 'cpara', true);
@@ -498,7 +488,7 @@ class ReferralProgram extends Module
 					<td class="center">'.(intval($friend['id_customer']) ? $friend['id_customer'] : '--').'</td>
 					<td>'.$friend['firstname'].' '.$friend['lastname'].'</td>
 					<td>'.$friend['email'].'</td>
-					<td>'.Tools::displayDate($friend['date_add'], 1, true).'</td>
+					<td>'.Tools::displayDate($friend['date_add'], intval($cookie->id_lang), true).'</td>
 					<td align="right">'.sizeof(ReferralProgramModule::getSponsorFriend($friend['id_customer'])).'</td>
 					<td align="right">'.($orders ? sizeof($orders) : 0).'</td>
 					<td align="center">'.(intval($friend['id_customer']) ? '<img src="'._PS_ADMIN_IMG_.'enabled.gif" />' : '<img src="'._PS_ADMIN_IMG_.'disabled.gif" />').'</td>
@@ -578,7 +568,7 @@ class ReferralProgram extends Module
 					'{discount_display}' => $discount_display,
 					'{discount_name}' => $discount->name
 				);
-				Mail::Send(intval($order->id_lang), 'referralprogram-congratulations', $this->l('Congratulations!'), $data, $sponsor->email, $sponsor->firstname.' '.$sponsor->lastname, NULL, strval(Configuration::get('PS_SHOP_EMAIL')), strval(Configuration::get('PS_SHOP_NAME')), NULL, NULL, dirname(__FILE__).'/mails/');
+				Mail::Send(intval($order->id_lang), 'referralprogram-congratulations', $this->l('Congratulations!'), $data, $sponsor->email, $sponsor->firstname.' '.$sponsor->lastname, strval(Configuration::get('PS_SHOP_EMAIL')), strval(Configuration::get('PS_SHOP_NAME')), NULL, NULL, dirname(__FILE__).'/mails/');
 				return true;
 			}
 		}

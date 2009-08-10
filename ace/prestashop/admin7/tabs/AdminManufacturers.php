@@ -7,7 +7,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -30,11 +30,11 @@ class AdminManufacturers extends AdminTab
 		$this->edit = true;
 	 	$this->delete = true;
 		
-		// Sub tab adresses
+		// Sub tab addresses
 		$countries = Country::getCountries(intval($cookie->id_lang));
 		foreach ($countries AS $country)
 			$this->countriesArray[$country['id_country']] = $country['name'];
-		$this->fieldsDisplayAdresses = array(
+		$this->fieldsDisplayAddresses = array(
 		'id_address' => array('title' => $this->l('ID'), 'align' => 'center', 'width' => 25),
 		'm!manufacturer_name' => array('title' => $this->l('Manufacturer'), 'width' => 100),
 		'firstname' => array('title' => $this->l('First name'), 'width' => 80),
@@ -43,11 +43,11 @@ class AdminManufacturers extends AdminTab
 		'city' => array('title' => $this->l('City'), 'width' => 150),
 		'country' => array('title' => $this->l('Country'), 'width' => 100, 'type' => 'select', 'select' => $this->countriesArray, 'filter_key' => 'cl!id_country'));
 		$this->_includeTabTitle = array($this->l('Manufacturers addresses'));
-		$this->_joinAdresses = 'LEFT JOIN `'._DB_PREFIX_.'country_lang` cl ON 
+		$this->_joinAddresses = 'LEFT JOIN `'._DB_PREFIX_.'country_lang` cl ON 
 		(cl.`id_country` = a.`id_country` AND cl.`id_lang` = '.intval($cookie->id_lang).') ';
-	 	$this->_joinAdresses .= 'LEFT JOIN `'._DB_PREFIX_.'manufacturer` m ON (a.`id_manufacturer` = m.`id_manufacturer`)';
-		$this->_selectAdresses = 'cl.`name` as country, m.`name` AS manufacturer_name';
-		$this->_includeTab = array('Addresses' => array('addressType' => 'manufacturer', 'fieldsDisplay' => $this->fieldsDisplayAdresses, '_join' => $this->_joinAdresses, '_select' => $this->_selectAdresses));
+	 	$this->_joinAddresses .= 'LEFT JOIN `'._DB_PREFIX_.'manufacturer` m ON (a.`id_manufacturer` = m.`id_manufacturer`)';
+		$this->_selectAddresses = 'cl.`name` as country, m.`name` AS manufacturer_name';
+		$this->_includeTab = array('Addresses' => array('addressType' => 'manufacturer', 'fieldsDisplay' => $this->fieldsDisplayAddresses, '_join' => $this->_joinAddresses, '_select' => $this->_selectAddresses));
 		
 		$this->view = true;
 		$this->_select = 'COUNT(`id_product`) AS `products`, (SELECT COUNT(ad.`id_manufacturer`) as `addresses` FROM `'._DB_PREFIX_.'address` ad WHERE ad.`id_manufacturer` = a.`id_manufacturer` GROUP BY ad.`id_manufacturer`) as `addresses`';
@@ -72,32 +72,25 @@ class AdminManufacturers extends AdminTab
 		parent::__construct();
 	}
 
-	public function postProcess()
+	public function afterImageUpload()
 	{
-		global $currentIndex;
-
 		/* Generate image with differents size */
-		if (($id_manufacturer = intval(Tools::getValue('id_manufacturer'))) AND isset($_FILES) AND file_exists(_PS_MANU_IMG_DIR_.$id_manufacturer.'.jpg'))
+		if (($id_manufacturer = intval(Tools::getValue('id_manufacturer'))) AND isset($_FILES) AND count($_FILES) AND file_exists(_PS_MANU_IMG_DIR_.$id_manufacturer.'.jpg'))
 		{
 			$imagesTypes = ImageType::getImagesTypes('manufacturers');
 			foreach ($imagesTypes AS $k => $imageType)
-			{
-				$file['tmp_name'] = _PS_MANU_IMG_DIR_.$id_manufacturer.'.jpg';
-				$file['type'] = 'image/jpg';
-				imageResize($file, _PS_MANU_IMG_DIR_.$id_manufacturer.'-'.stripslashes($imageType['name']).'.jpg', intval($imageType['width']), intval($imageType['height']));
-			}
+				imageResize(_PS_MANU_IMG_DIR_.$id_manufacturer.'.jpg', _PS_MANU_IMG_DIR_.$id_manufacturer.'-'.stripslashes($imageType['name']).'.jpg', intval($imageType['width']), intval($imageType['height']));
 		}
-		parent::postProcess();
 	}
 
 	public function displayForm()
 	{
-		global $currentIndex;
-
+		global $currentIndex, $cookie;
 		$manufacturer = $this->loadObject(true);
 		$this->displayImage($manufacturer->id, _PS_MANU_IMG_DIR_.$manufacturer->id.'.jpg', 350);
 		$defaultLanguage = intval(Configuration::get('PS_LANG_DEFAULT'));
 		$languages = Language::getLanguages();
+		$langtags = 'cdesc2¤cdesc¤mmeta_title¤mmeta_keywords¤mmeta_description';
 
 		echo '
 		<script type="text/javascript">
@@ -110,22 +103,98 @@ class AdminManufacturers extends AdminTab
 				<div class="margin-form">
 					<input type="text" size="40" name="name" value="'.htmlentities(Tools::getValue('name', $manufacturer->name), ENT_COMPAT, 'UTF-8').'" /> <sup>*</sup>
 					<span class="hint" name="help_box">'.$this->l('Invalid characters:').' <>;=#{}<span class="hint-pointer">&nbsp;</span></span>
-				</div>
-				<label>'.$this->l('Description:').' </label>
+				</div>';
+
+		echo '<br class="clear" /><br /><br /><br /><br /><br /><br /><br /><br /><br /><label>'.$this->l('Short description:').' </label>
 				<div class="margin-form">';
-				foreach ($languages as $language)
-					echo '
-					<div id="description_'.$language['id_lang'].'" style="display: '.($language['id_lang'] == $defaultLanguage ? 'block' : 'none').'; float: left;">
-						<input size="33" type="text" name="description_'.$language['id_lang'].'" value="'.htmlentities($this->getFieldValue($manufacturer, 'description', intval($language['id_lang'])), ENT_COMPAT, 'UTF-8').'" />
-						<span class="hint" name="help_box">'.$this->l('Invalid characters:').' <>;=#{}<span class="hint-pointer">&nbsp;</span></span>
-						<p style="clear: both;">'.$this->l('Will appear in manufacturer list').'</p>
-					</div>';
-				$this->displayFlags($languages, $defaultLanguage, 'description', 'description');
-		echo '	</div>
-				<label>'.$this->l('Logo:').' </label>
+		foreach ($languages as $language)
+			echo '
+							<div id="cdesc2_'.$language['id_lang'].'" style="float: left;'.($language['id_lang'] != $defaultLanguage ? 'display:none;' : '').'">
+								<textarea class="rte" cols="48" rows="5" id="short_description_'.$language['id_lang'].'" name="short_description_'.$language['id_lang'].'">'.htmlentities(stripslashes($this->getFieldValue($manufacturer, 'short_description', $language['id_lang'])), ENT_COMPAT, 'UTF-8').'</textarea>
+							</div>';
+		$this->displayFlags($languages, $defaultLanguage, $langtags, 'cdesc2');
+		echo '</div>';
+				
+		echo '<br class="clear" /><br /><br /><label>'.$this->l('Description:').' </label>
+				<div class="margin-form">';
+		foreach ($languages as $language)
+			echo '
+							<div id="cdesc_'.$language['id_lang'].'" style="float: left;'.($language['id_lang'] != $defaultLanguage ? 'display:none;' : '').'">
+								<textarea class="rte" cols="48" rows="10" id="description_'.$language['id_lang'].'" name="description_'.$language['id_lang'].'">'.htmlentities(stripslashes($this->getFieldValue($manufacturer, 'description', $language['id_lang'])), ENT_COMPAT, 'UTF-8').'</textarea>
+							</div>';
+		$this->displayFlags($languages, $defaultLanguage, $langtags, 'cdesc');
+		echo '</div>';
+
+		// TinyMCE
+		echo '
+		<script type="text/javascript" src="'.__PS_BASE_URI__.'js/tinymce/jscripts/tiny_mce/jquery.tinymce.js"></script>
+		<script type="text/javascript">
+		function tinyMCEInit(element)
+		{
+			$().ready(function() {
+				$(element).tinymce({
+					// Location of TinyMCE script
+					script_url : \''.__PS_BASE_URI__.'js/tinymce/jscripts/tiny_mce/tiny_mce.js\',
+					// General options
+					theme : "advanced",
+					plugins : "safari,pagebreak,style,layer,table,advimage,advlink,inlinepopups,preview,media,searchreplace,contextmenu,paste,directionality,fullscreen",
+					// Theme options
+					theme_advanced_buttons1 : "newdocument,|,bold,italic,underline,strikethrough,|,justifyleft,justifycenter,justifyright,justifyfull,styleselect,formatselect,fontselect,fontsizeselect",
+					theme_advanced_buttons2 : "cut,copy,paste,pastetext,pasteword,|,search,replace,|,bullist,numlist,|,outdent,indent,blockquote,|,undo,redo,|,link,unlink,anchor,image,cleanup,help,code,|,insertdate,inserttime,preview,|,forecolor,backcolor",
+					theme_advanced_buttons3 : "tablecontrols,|,hr,removeformat,visualaid,|,sub,sup,|,charmap,media,|,|,ltr,rtl,|,fullscreen",
+					theme_advanced_buttons4 : "insertlayer,moveforward,movebackward,absolute,|,styleprops,|,cite,abbr,acronym,del,ins,attribs,|,pagebreak",
+					theme_advanced_toolbar_location : "top",
+					theme_advanced_toolbar_align : "left",
+					theme_advanced_statusbar_location : "bottom",
+					theme_advanced_resizing : true,
+					content_css : "'.__PS_BASE_URI__.'themes/'._THEME_NAME_.'/css/global.css",
+					// Drop lists for link/image/media/template dialogs
+					template_external_list_url : "lists/template_list.js",
+					external_link_list_url : "lists/link_list.js",
+					external_image_list_url : "lists/image_list.js",
+					media_external_list_url : "lists/media_list.js"
+				});
+			});
+		}
+		tinyMCEInit(\'textarea.rte\');
+		</script>
+		';
+		echo '<br style="clear:both;" /><br/><br/><label>'.$this->l('Logo:').' </label>
 				<div class="margin-form">
 					<input type="file" name="logo" />
 					<p>'.$this->l('Upload manufacturer logo from your computer').'</p>
+				</div>
+				<label>'.$this->l('Meta title:').' </label>
+				<div class="margin-form">';
+		foreach ($languages as $language)
+			echo '
+					<div id="mmeta_title_'.$language['id_lang'].'" style="display: '.($language['id_lang'] == $defaultLanguage ? 'block' : 'none').'; float: left;">
+						<input type="text" name="meta_title_'.$language['id_lang'].'" id="meta_title_'.$language['id_lang'].'" value="'.htmlentities($this->getFieldValue($manufacturer, 'meta_title', intval($language['id_lang'])), ENT_COMPAT, 'UTF-8').'" />
+						<span class="hint" name="help_box">'.$this->l('Forbidden characters:').' <>;=#{}<span class="hint-pointer">&nbsp;</span></span>
+					</div>';
+		$this->displayFlags($languages, $defaultLanguage, $langtags, 'mmeta_title');
+		echo '		<div class="clear"></div>
+				</div>
+				<label>'.$this->l('Meta description:').' </label>
+				<div class="margin-form">';
+		foreach ($languages as $language)
+			echo '<div id="mmeta_description_'.$language['id_lang'].'" style="display: '.($language['id_lang'] == $defaultLanguage ? 'block' : 'none').'; float: left;">
+						<input type="text" name="meta_description_'.$language['id_lang'].'" id="meta_description_'.$language['id_lang'].'" value="'.htmlentities($this->getFieldValue($manufacturer, 'meta_description', intval($language['id_lang'])), ENT_COMPAT, 'UTF-8').'" />
+						<span class="hint" name="help_box">'.$this->l('Forbidden characters:').' <>;=#{}<span class="hint-pointer">&nbsp;</span></span>
+				</div>';
+		$this->displayFlags($languages, $defaultLanguage, $langtags, 'mmeta_description');
+		echo '		<div class="clear"></div>
+				</div>
+				<label>'.$this->l('Meta keywords:').' </label>
+				<div class="margin-form">';
+		foreach ($languages as $language)
+			echo '
+					<div id="mmeta_keywords_'.$language['id_lang'].'" style="display: '.($language['id_lang'] == $defaultLanguage ? 'block' : 'none').'; float: left;">
+						<input type="text" name="meta_keywords_'.$language['id_lang'].'" id="meta_keywords_'.$language['id_lang'].'" value="'.htmlentities($this->getFieldValue($manufacturer, 'meta_keywords', intval($language['id_lang'])), ENT_COMPAT, 'UTF-8').'" />
+						<span class="hint" name="help_box">'.$this->l('Forbidden characters:').' <>;=#{}<span class="hint-pointer">&nbsp;</span></span>
+					</div>';
+		$this->displayFlags($languages, $defaultLanguage, $langtags, 'mmeta_keywords');
+		echo '		<div class="clear"></div>
 				</div>
 				<div class="margin-form">
 					<input type="submit" value="'.$this->l('   Save   ').'" name="submitAdd'.$this->table.'" class="button" />
@@ -171,7 +240,7 @@ class AdminManufacturers extends AdminTab
 					</tr>
 				</table>';
 		if (!sizeof($addresses))
-			echo 'No adresse for this manufacturer.';
+			echo 'No address for this manufacturer.';
 		echo '<br /><br />';
 		echo '<h3>'.$this->l('Total products:').' '.sizeof($products).'</h3>';
 		foreach ($products AS $product)

@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -44,10 +44,7 @@ abstract class Db
   
 	/** @var mixed Object instance for singleton */
 	private static $_instance;
-  
-	/** @var string Keywords not allowed in SQL string */
-	private static $_blacklist = 'UNION|LOAD_FILE|OUTFILE|DUMPFILE|ESCAPED|TERMINATED|CASCADE|INFILE|X509|TRIGGER|REVOKE';
-  
+
 	/**
 	 * Get Db object instance (Singleton)
 	 *
@@ -59,12 +56,12 @@ abstract class Db
 			self::$_instance = new MySQL();
 		return self::$_instance;
 	}
-	
-    public function __destruct()
-    {
-        $this->disconnect();
-    }
-	
+
+	public function __destruct()
+	{
+		$this->disconnect();
+	}
+
 	/**
 	 * Build a Db object
 	 */
@@ -77,18 +74,7 @@ abstract class Db
 		$this->_database = _DB_NAME_;
 		$this->connect();
 	}
-		
-	/**
-	 * Filter SQL query within a blacklist
-	 *
-	 * @param string $query SQL query
-	 * @return boolean True if query need to be blocked
-	 */
-	public static function blacklist(&$query)
-	{
-		return eregi(self::$_blacklist, $query) ? true : false;
-	}
-	
+
 	/**
 	 * Filter SQL query within a blacklist
 	 *
@@ -214,7 +200,12 @@ abstract class Db
 	/**
 	 * Fetches an array containing all of the rows from a result set
 	 */
-	abstract public function ExecuteS($query);
+	abstract public function ExecuteS($query, $array = true);
+	
+	/*
+	 * Get next row for a query which doesn't return an array 
+	 */
+	abstract public function nextRow($result = false);
 	
 	/**
 		 * Alias of Db::getInstance()->ExecuteS
@@ -226,11 +217,25 @@ abstract class Db
 	{
 		return Db::getInstance()->ExecuteS($query);
 	}
+	
+	static public function ps($query)
+	{
+		$ret = Db::s($query);
+		p($ret);
+		return $ret;
+	}
+	
+	static public function ds($query)
+	{
+		Db::s($query);
+		die();
+	}
 
 	/**
-	 * Get Row
+	 * Get Row and get value
 	 */
 	abstract public function getRow($query);
+	abstract public function getValue($query);
 
 	/**
 	 * Returns the text of the error message from previous database operation

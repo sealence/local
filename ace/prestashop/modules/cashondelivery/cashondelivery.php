@@ -2,48 +2,54 @@
 
 class CashOnDelivery extends PaymentModule
 {	
-	function __construct()
+	public function __construct()
 	{
 		$this->name = 'cashondelivery';
 		$this->tab = 'Payment';
-		$this->version = 0.1;
+		$this->version = '0.3';
 		
 		$this->currencies = false;
 
 		parent::__construct();
 
-		/* The parent construct is required for translations */
-		$this->page = basename(__FILE__, '.php');
 		$this->displayName = $this->l('Cash on delivery (COD)');
 		$this->description = $this->l('Accept cash on delivery payments');
 	}
 
-	function install()
+	public function install()
 	{
-        parent::install();
-		$this->registerHook('payment');
-		$this->registerHook('paymentReturn');
+		if (!parent::install() OR !$this->registerHook('payment') OR !$this->registerHook('paymentReturn'))
+			return false;
+		return true;
 	}
 
-	function hookPayment($params)
+	public function hookPayment($params)
 	{
+		if (!$this->active)
+			return ;
+
 		global $smarty;
-		
+
+		// Check if cart has product download
 		foreach ($params['cart']->getProducts() AS $product)
-			if (Validate::isUnsignedInt(ProductDownload::getIdFromIdProduct(intval($product['id_product']))))
+		{
+			$pd = ProductDownload::getIdFromIdProduct(intval($product['id_product']));
+			if ($pd AND Validate::isUnsignedInt($pd))
 				return false;
-		
+		}
+
 		$smarty->assign(array(
-            'this_path' => $this->_path,
-            'this_path_ssl' => (Configuration::get('PS_SSL_ENABLED') ? 'https://' : 'http://').htmlspecialchars($_SERVER['HTTP_HOST'], ENT_COMPAT, 'UTF-8').__PS_BASE_URI__.'modules/'.$this->name.'/'
-            ));
+			'this_path' => $this->_path,
+			'this_path_ssl' => (Configuration::get('PS_SSL_ENABLED') ? 'https://' : 'http://').htmlspecialchars($_SERVER['HTTP_HOST'], ENT_COMPAT, 'UTF-8').__PS_BASE_URI__.'modules/'.$this->name.'/'
+		));
 		return $this->display(__FILE__, 'payment.tpl');
 	}
 	
-	function hookPaymentReturn($params)
+	public function hookPaymentReturn($params)
 	{
+		if (!$this->active)
+			return ;
+
 		return $this->display(__FILE__, 'confirmation.tpl');
 	}
 }
-
-?>

@@ -9,14 +9,13 @@ class Paypal extends PaymentModule
 	{
 		$this->name = 'paypal';
 		$this->tab = 'Payment';
-		$this->version = '1.4';
+		$this->version = '1.6';
 		
 		$this->currencies = true;
 		$this->currencies_mode = 'radio';
 
         parent::__construct();
 
-        /* The parent construct is required for translations */
 		$this->page = basename(__FILE__, '.php');
         $this->displayName = $this->l('PayPal');
         $this->description = $this->l('Accepts payments by PayPal');
@@ -30,15 +29,19 @@ class Paypal extends PaymentModule
 
 	public function install()
 	{
-		if (!parent::install() OR !Configuration::updateValue('PAYPAL_BUSINESS', 'paypal@prestashop.com')
-			OR !Configuration::updateValue('PAYPAL_SANDBOX', 1) OR !$this->registerHook('payment'))
+		if (!parent::install()
+			OR !Configuration::updateValue('PAYPAL_BUSINESS', 'paypal@prestashop.com')
+			OR !Configuration::updateValue('PAYPAL_SANDBOX', 1)
+			OR !$this->registerHook('payment')
+			OR !$this->registerHook('paymentReturn'))
 			return false;
 		return true;
 	}
 
 	public function uninstall()
 	{
-		if (!Configuration::deleteByName('PAYPAL_BUSINESS') OR !Configuration::deleteByName('PAYPAL_SANDBOX')
+		if (!Configuration::deleteByName('PAYPAL_BUSINESS')
+			OR !Configuration::deleteByName('PAYPAL_SANDBOX')
 			OR !parent::uninstall())
 			return false;
 		return true;
@@ -57,8 +60,9 @@ class Paypal extends PaymentModule
 				$_POST['sandbox'] = 1;
 			if (!sizeof($this->_postErrors))
 			{
-				Configuration::updateValue('PAYPAL_BUSINESS', $_POST['business']);
+				Configuration::updateValue('PAYPAL_BUSINESS', strval($_POST['business']));
 				Configuration::updateValue('PAYPAL_SANDBOX', intval($_POST['sandbox']));
+				Configuration::updateValue('PAYPAL_HEADER', strval($_POST['header']));
 				$this->displayConf();
 			}
 			else
@@ -97,21 +101,29 @@ class Paypal extends PaymentModule
 	public function displayPayPal()
 	{
 		$this->_html .= '
+		<div style="float: right; width: 440px; height: 150px; border: dashed 1px #666; padding: 8px; margin-left: 12px;">
+			<h2>'.$this->l('Opening your PayPal account').'</h2>
+			<div style="clear: both;"></div>
+			<p>'.$this->l('By opening your PayPal account by clicking on the following image you are helping us significantly to improve the PrestaShop software:').'</p>
+			<p style="text-align: center;"><a href="https://www.paypal.com/fr/mrb/pal=TWJHHUL9AEP9C"><img src="../modules/paypal/prestashop_paypal.png" alt="PrestaShop & PayPal" style="margin-top: 12px;" /></a></p>
+			<div style="clear: right;"></div>
+		</div>
 		<img src="../modules/paypal/paypal.gif" style="float:left; margin-right:15px;" />
 		<b>'.$this->l('This module allows you to accept payments by PayPal.').'</b><br /><br />
 		'.$this->l('If the client chooses this payment mode, your PayPal account will be automatically credited.').'<br />
 		'.$this->l('You need to configure your PayPal account first before using this module.').'
-		<br /><br /><br />';
+		<div style="clear:both;">&nbsp;</div>';
 	}
 
 	public function displayFormSettings()
 	{
-		$conf = Configuration::getMultiple(array('PAYPAL_BUSINESS', 'PAYPAL_SANDBOX'));
+		$conf = Configuration::getMultiple(array('PAYPAL_BUSINESS', 'PAYPAL_SANDBOX', 'PAYPAL_HEADER'));
 		$business = array_key_exists('business', $_POST) ? $_POST['business'] : (array_key_exists('PAYPAL_BUSINESS', $conf) ? $conf['PAYPAL_BUSINESS'] : '');
 		$sandbox = array_key_exists('sandbox', $_POST) ? $_POST['sandbox'] : (array_key_exists('PAYPAL_SANDBOX', $conf) ? $conf['PAYPAL_SANDBOX'] : '');
+		$header = array_key_exists('header', $_POST) ? $_POST['header'] : (array_key_exists('PAYPAL_HEADER', $conf) ? $conf['PAYPAL_HEADER'] : '');
 
 		$this->_html .= '
-		<form action="'.$_SERVER['REQUEST_URI'].'" method="post">
+		<form action="'.$_SERVER['REQUEST_URI'].'" method="post" style="clear: both;">
 		<fieldset>
 			<legend><img src="../img/admin/contact.gif" />'.$this->l('Settings').'</legend>
 			<label>'.$this->l('PayPal business e-mail').'</label>
@@ -121,6 +133,9 @@ class Paypal extends PaymentModule
 				<input type="radio" name="sandbox" value="1" '.($sandbox ? 'checked="checked"' : '').' /> '.$this->l('Yes').'
 				<input type="radio" name="sandbox" value="0" '.(!$sandbox ? 'checked="checked"' : '').' /> '.$this->l('No').'
 			</div>
+			<label>'.$this->l('Banner image URL').'</label>
+			<div class="margin-form"><input type="text" size="82" name="header" value="'.htmlentities($header, ENT_COMPAT, 'UTF-8').'" />
+			<p class="hint clear" style="display: block; width: 501px;">'.$this->l('The image should be host on a securised server in order to avoid security warnings. Size should be limited at 750x90px.').'</p></div><br /><br /><br />
 			<br /><center><input type="submit" name="submitPaypal" value="'.$this->l('Update settings').'" class="button" /></center>
 		</fieldset>
 		</form><br /><br />
@@ -130,7 +145,7 @@ class Paypal extends PaymentModule
 			'.$this->l('In').' <i>'.$this->l('Profile > Selling Preferences > Website Payment Preferences').'</i>, '. $this->l('set:').'<br />
 			- <b>'.$this->l('Auto Return').'</b> : '.$this->l('Off').',<br />
 			- <b>'.$this->l('Payment Data Transfer').'</b> '.$this->l('to').' <b>Off</b>.<br /><br />
-			'.$this->l('In').' <i>'.$this->l('Profile > Selling Preferences > Shipping Calculations:').'</i><br />
+			'.$this->l('In').' <i>'.$this->l('Profile > Selling Preferences > Postage Calculations').'</i><br />
 			- check <b>'.$this->l('Click here to allow transaction-based shipping values to override the profile shipping settings listed above').'</b><br /><br />
 			<b style="color: red;">'.$this->l('All PrestaShop currencies must be also configured</b> inside Profile > Financial Information > Currency balances').'<br />
 		</fieldset>';
@@ -138,11 +153,15 @@ class Paypal extends PaymentModule
 
 	public function hookPayment($params)
 	{
+		if (!$this->active)
+			return ;
+
 		global $smarty;
 
 		$address = new Address(intval($params['cart']->id_address_invoice));
 		$customer = new Customer(intval($params['cart']->id_customer));
 		$business = Configuration::get('PAYPAL_BUSINESS');
+		$header = Configuration::get('PAYPAL_HEADER');
 		$currency = $this->getCurrency();
 
 		if (!Validate::isEmail($business))
@@ -152,7 +171,7 @@ class Paypal extends PaymentModule
 			return $this->l('Paypal error: (invalid address or customer)');
 			
 		$products = $params['cart']->getProducts();
-		
+
 		foreach ($products as $key => $product)
 		{
 			$products[$key]['name'] = str_replace('"', '\'', $product['name']);
@@ -166,22 +185,35 @@ class Paypal extends PaymentModule
 			'country' => new Country(intval($address->id_country)),
 			'customer' => $customer,
 			'business' => $business,
+			'header' => $header,
 			'currency' => $currency,
 			'paypalUrl' => $this->getPaypalUrl(),
+			// products + discounts - shipping cost
 			'amount' => number_format(Tools::convertPrice($params['cart']->getOrderTotal(true, 4), $currency), 2, '.', ''),
+			// shipping cost + wrapping
 			'shipping' =>  number_format(Tools::convertPrice(($params['cart']->getOrderShippingCost() + $params['cart']->getOrderTotal(true, 6)), $currency), 2, '.', ''),
 			'discounts' => $params['cart']->getDiscounts(),
 			'products' => $products,
+			// products + discounts + shipping cost
 			'total' => number_format(Tools::convertPrice($params['cart']->getOrderTotal(true, 3), $currency), 2, '.', ''),
 			'id_cart' => intval($params['cart']->id),
 			'goBackUrl' => 'http://'.htmlspecialchars($_SERVER['HTTP_HOST'], ENT_COMPAT, 'UTF-8').__PS_BASE_URI__.'order-confirmation.php?key='.$customer->secure_key.'&id_cart='.intval($params['cart']->id).'&id_module='.intval($this->id),
-			'returnUrl' => 'http://'.htmlspecialchars($_SERVER['HTTP_HOST'], ENT_COMPAT, 'UTF-8').__PS_BASE_URI__.'modules/paypal/validation.php',
+			'notify' => 'http://'.htmlspecialchars($_SERVER['HTTP_HOST'], ENT_COMPAT, 'UTF-8').__PS_BASE_URI__.'modules/paypal/validation.php',
+			'cancelUrl' => 'http://'.htmlspecialchars($_SERVER['HTTP_HOST'], ENT_COMPAT, 'UTF-8').__PS_BASE_URI__.'index.php',
 			'this_path' => $this->_path
 		));
 
 		return $this->display(__FILE__, 'paypal.tpl');
-    }
-	
+	}
+
+	public function hookPaymentReturn($params)
+	{
+		if (!$this->active)
+			return ;
+
+		return $this->display(__FILE__, 'confirmation.tpl');
+	}
+
 	public function getL($key)
 	{
 		$translations = array(
@@ -203,6 +235,16 @@ class Paypal extends PaymentModule
 		);
 		return $translations[$key];
 	}
-}
 
-?>
+	function validateOrder($id_cart, $id_order_state, $amountPaid, $paymentMethod = 'Unknown', $message = NULL, $extraVars = array(), $currency_special = NULL, $dont_touch_amount = false)
+	{
+		if (!$this->active)
+			return ;
+
+		$currency = $this->getCurrency();
+		$cart = new Cart(intval($id_cart));
+		$cart->id_currency = $currency->id;
+		$cart->save();
+		parent::validateOrder($id_cart, $id_order_state, $amountPaid, $paymentMethod, $message, $extraVars, $currency_special, true);
+	}
+}

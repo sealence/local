@@ -7,7 +7,7 @@
   * @author Damien Metzger / Epitech
   * @copyright Epitech / PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   */
   
 class Page extends ObjectModel
@@ -18,7 +18,7 @@ class Page extends ObjectModel
 	public $name;
 
 	protected $fieldsRequired = array ('id_page_type');	
-	protected $fieldsValidate = array ('id_page_type' => 'isUnsignedId', 'id_object' => 'isGenericName');
+	protected $fieldsValidate = array ('id_page_type' => 'isUnsignedId', 'id_object' => 'isUnsignedId');
 
 	protected $table = 'page';
 	protected $identifier = 'id_page';
@@ -27,7 +27,7 @@ class Page extends ObjectModel
 	{
 		parent::validateFields();
 		$fields['id_page_type'] = intval($this->id_page_type);
-		$fields['id_object'] = pSQL($this->id_object);
+		$fields['id_object'] = intval($this->id_object);
 		return $fields;
 	}
 	

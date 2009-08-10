@@ -9,8 +9,6 @@ class Blocknewsletter extends Module
 
 	 	parent::__construct();
 
-	 	/* The parent construct is required for translations */
-		$this->page = basename(__FILE__, '.php');
  	 	$this->displayName = $this->l('Newsletter block');
  	 	$this->description = $this->l('Adds a block for newsletter subscription');
 		$this->confirmUninstall = $this->l('Are you sure you want to delete all your contacts ?');
@@ -31,7 +29,15 @@ class Blocknewsletter extends Module
  	{
  	 	if (parent::install() == false OR $this->registerHook('leftColumn') == false)
  	 		return false;
- 	 	return Db::getInstance()->Execute('CREATE TABLE '._DB_PREFIX_.'newsletter (`id` int(6) NOT NULL AUTO_INCREMENT, `email` varchar(255) NOT NULL, `newsletter_date_add` DATETIME NULL, `ip_registration_newsletter` varchar(15) NOT NULL, PRIMARY KEY(`id`)) ENGINE=MyISAM default CHARSET=utf8');
+ 	 	return Db::getInstance()->Execute('
+		CREATE TABLE '._DB_PREFIX_.'newsletter (
+			`id` int(6) NOT NULL AUTO_INCREMENT,
+			`email` varchar(255) NOT NULL,
+			`newsletter_date_add` DATETIME NULL,
+			`ip_registration_newsletter` varchar(15) NOT NULL,
+			`http_referer` VARCHAR(255) NULL,
+			PRIMARY KEY(`id`)
+		) ENGINE=MyISAM default CHARSET=utf8');
  	}
  	
  	public function uninstall()
@@ -137,7 +143,9 @@ class Blocknewsletter extends Module
 			/* If the user ins't a customer */
 			elseif ($registerStatus == -1)
 			{
-				if (!Db::getInstance()->Execute('INSERT INTO '._DB_PREFIX_.'newsletter VALUES (\'\', \''.pSQL($_POST['email']).'\', NOW(), \''.pSQL($_SERVER['REMOTE_ADDR']).'\')'))
+				global $cookie;
+				if (!Db::getInstance()->Execute('INSERT INTO '._DB_PREFIX_.'newsletter VALUES (\'\', \''.pSQL($_POST['email']).'\', NOW(), \''.pSQL($_SERVER['REMOTE_ADDR']).'\', 
+					(SELECT c.http_referer FROM '._DB_PREFIX_.'connections c WHERE c.id_guest = '.intval($cookie->id_guest).' ORDER BY c.date_add DESC LIMIT 1))'))
 					return $this->error = $this->l('Error during subscription');
 				$this->sendVoucher(pSQL($_POST['email']));
 				return $this->valid = $this->l('Subscription successful');

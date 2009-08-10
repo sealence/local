@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -31,12 +31,18 @@ class OrderDetail extends ObjectModel
 
 	/** @var integer */
 	public $product_quantity;
+
+	/** @var integer */
+	public $product_quantity_in_stock;
 	
 	/** @var integer */
 	public $product_quantity_return;
 	
 	/** @var integer */
-	public $product_quantity_cancelled;
+	public $product_quantity_refunded;
+
+	/** @var integer */
+	public $product_quantity_reinjected;
 
 	/** @var float */
 	public $product_price;
@@ -84,8 +90,10 @@ class OrderDetail extends ObjectModel
 	'product_attribute_id' => 'isUnsignedId',
 	'product_name' => 'isGenericName',
 	'product_quantity' => 'isInt',
-	'product_quantity_return' => 'isInt',
-	'product_quantity_cancelled' => 'isInt',
+	'product_quantity_in_stock' => 'isUnsignedInt',
+	'product_quantity_return' => 'isUnsignedInt',
+	'product_quantity_refunded' => 'isUnsignedInt',
+	'product_quantity_reinjected' => 'isUnsignedInt',
 	'product_price' => 'isPrice',
 	'product_quantity_discount' => 'isFloat',
 	'product_ean13' => 'isEan13',
@@ -110,8 +118,10 @@ class OrderDetail extends ObjectModel
 		$fields['product_attribute_id'] = intval($this->product_attribute_id);
 		$fields['product_name'] = pSQL($this->product_name);
 		$fields['product_quantity'] = intval($this->product_quantity);
+		$fields['product_quantity_in_stock'] = intval($this->product_quantity_in_stock);
 		$fields['product_quantity_return'] = intval($this->product_quantity_return);
-		$fields['product_quantity_cancelled'] = intval($this->product_quantity_cancelled);
+		$fields['product_quantity_refunded'] = intval($this->product_quantity_refunded);
+		$fields['product_quantity_reinjected'] = intval($this->product_quantity_reinjected);
 		$fields['product_price'] = floatval($this->product_price);
 		$fields['product_quantity_discount'] = floatval($this->product_quantity_discount);
 		$fields['product_ean13'] = pSQL($this->product_ean13);

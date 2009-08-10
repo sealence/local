@@ -7,7 +7,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -171,21 +171,17 @@ class AdminImages extends AdminTab
 		/* Delete categories images */
 		$toDel = scandir(_PS_CAT_IMG_DIR_);
 		foreach ($toDel AS $d)
-			if (ereg('^[0-9]+\-(.*)\.jpg$', $d) OR ereg('^([[:lower:]]{2})\-default\-(.*)\.jpg$', $d))
+			if (preg_match('/^[0-9]+\-(.*)\.jpg$/', $d) OR preg_match('/^([[:lower:]]{2})\-default\-(.*)\.jpg$/', $d))
 				unlink(_PS_CAT_IMG_DIR_.$d);
 
 		/* Regenerate categories images */
 		$errors = false;
 		$categoriesImages = scandir(_PS_CAT_IMG_DIR_);
 		foreach ($categoriesImages as $image)
-			if (ereg('^[0-9]*\.jpg$', $image))
+			if (preg_match('/^[0-9]*\.jpg$/', $image))
 				foreach ($categoriesTypes AS $k => $imageType)
-				{
-					$file['tmp_name'] = _PS_CAT_IMG_DIR_.$image;
-					$file['type'] = 'image/jpg';
-					if (!imageResize($file, _PS_CAT_IMG_DIR_.substr($image, 0, -4).'-'.stripslashes($imageType['name']).'.jpg', intval($imageType['width']), intval($imageType['height'])))
+					if (!imageResize(_PS_CAT_IMG_DIR_.$image, _PS_CAT_IMG_DIR_.substr($image, 0, -4).'-'.stripslashes($imageType['name']).'.jpg', intval($imageType['width']), intval($imageType['height'])))
 						$errors = true;
-				}
 		if ($errors)
 			$this->_errors[] = Tools::displayError('Cannot write category image. Please check the folder\'s writing permissions.');
 
@@ -194,10 +190,9 @@ class AdminImages extends AdminTab
 		foreach ($categoriesTypes AS $k => $imageType)
 			foreach ($languages AS $language)
 			{
-				$file['tmp_name'] = _PS_CAT_IMG_DIR_.$language['iso_code'].'.jpg';
-				if (!file_exists($file['tmp_name']))
-					$file['tmp_name'] = _PS_PROD_IMG_DIR_.Language::getIsoById(intval(Configuration::get('PS_LANG_DEFAULT'))).'.jpg';
-				$file['type'] = 'image/jpg';
+				$file = _PS_CAT_IMG_DIR_.$language['iso_code'].'.jpg';
+				if (!file_exists($file))
+					$file = _PS_PROD_IMG_DIR_.Language::getIsoById(intval(Configuration::get('PS_LANG_DEFAULT'))).'.jpg';
 				if (!imageResize($file, _PS_CAT_IMG_DIR_.$language['iso_code'].'-default-'.stripslashes($imageType['name']).'.jpg',
 				intval($imageType['width']), intval($imageType['height'])))
 					$errors = true;
@@ -208,7 +203,7 @@ class AdminImages extends AdminTab
 		/* Delete manufacturers images */
 		$toDel = scandir(_PS_MANU_IMG_DIR_);
 		foreach ($toDel AS $d)
-			if (ereg('^[0-9]+\-(.*)\.jpg$', $d) OR ereg('^([[:lower:]]{2})\-default\-(.*)\.jpg$', $d))
+			if (preg_match('/^[0-9]+\-(.*)\.jpg$/', $d) OR preg_match('/^([[:lower:]]{2})\-default\-(.*)\.jpg$/', $d))
 				unlink(_PS_MANU_IMG_DIR_.$d);
 
 		/* Regenerate manufacturers images */
@@ -216,14 +211,10 @@ class AdminImages extends AdminTab
 		$manufacturersImages = scandir(_PS_MANU_IMG_DIR_);
 		$errors = false;
 		foreach ($manufacturersImages AS $image)
-			if (ereg('^[0-9]*\.jpg$', $image))
+			if (preg_match('/^[0-9]*\.jpg$/', $image))
 				foreach ($manufacturersTypes AS $k => $imageType)
-				{
-					$file['tmp_name'] = _PS_MANU_IMG_DIR_.$image;
-					$file['type'] = 'image/jpg';
-					if (!imageResize($file, _PS_MANU_IMG_DIR_.substr($image, 0, -4).'-'.stripslashes($imageType['name']).'.jpg', intval($imageType['width']), intval($imageType['height'])))
+					if (!imageResize(_PS_MANU_IMG_DIR_.$image, _PS_MANU_IMG_DIR_.substr($image, 0, -4).'-'.stripslashes($imageType['name']).'.jpg', intval($imageType['width']), intval($imageType['height'])))
 						$errors = true;
-				}
 
 		if ($errors)
 			$this->_errors[] = Tools::displayError('Cannot write manufacturer images. Please check the folder\'s writing permissions.');
@@ -233,10 +224,9 @@ class AdminImages extends AdminTab
 		foreach ($manufacturersTypes AS $k => $imageType)
 			foreach ($languages AS $language)
 			{
-				$file['tmp_name'] = _PS_MANU_IMG_DIR_.$language['iso_code'].'.jpg';
-				if (!file_exists($file['tmp_name']))
-					$file['tmp_name'] = _PS_PROD_IMG_DIR_.Language::getIsoById(intval(Configuration::get('PS_LANG_DEFAULT'))).'.jpg';
-				$file['type'] = 'image/jpg';
+				$file = _PS_MANU_IMG_DIR_.$language['iso_code'].'.jpg';
+				if (!file_exists($file))
+					$file = _PS_PROD_IMG_DIR_.Language::getIsoById(intval(Configuration::get('PS_LANG_DEFAULT'))).'.jpg';
 				if (!imageResize($file, _PS_MANU_IMG_DIR_.$language['iso_code'].'-default-'.stripslashes($imageType['name']).'.jpg',
 				intval($imageType['width']), intval($imageType['height'])))
 					$errors = true;
@@ -247,7 +237,7 @@ class AdminImages extends AdminTab
 		/* Delete suppliers images */
 		$toDel = scandir(_PS_SUPP_IMG_DIR_);
 		foreach ($toDel AS $d)
-			if (ereg('^[0-9]+\-(.*)\.jpg$', $d) OR ereg('^([[:lower:]]{2})\-default\-(.*)\.jpg$', $d))
+			if (preg_match('/^[0-9]+\-(.*)\.jpg$/', $d) OR preg_match('/^([[:lower:]]{2})\-default\-(.*)\.jpg$/', $d))
 				unlink(_PS_SUPP_IMG_DIR_.$d);
 
 		/* Regenerate suppliers images */
@@ -255,14 +245,10 @@ class AdminImages extends AdminTab
 		$suppliersImages = scandir(_PS_SUPP_IMG_DIR_);
 		$errors = false;
 		foreach ($suppliersImages AS $image)
-			if (ereg('^[0-9]*\.jpg$', $image))
+			if (preg_match('/^[0-9]*\.jpg$/', $image))
 				foreach ($suppliersTypes AS $k => $imageType)
-				{
-					$file['tmp_name'] = _PS_SUPP_IMG_DIR_.$image;
-					$file['type'] = 'image/jpg';
-					if (!imageResize($file, _PS_SUPP_IMG_DIR_.substr($image, 0, -4).'-'.stripslashes($imageType['name']).'.jpg', intval($imageType['width']), intval($imageType['height'])))
+					if (!imageResize(_PS_SUPP_IMG_DIR_.$image, _PS_SUPP_IMG_DIR_.substr($image, 0, -4).'-'.stripslashes($imageType['name']).'.jpg', intval($imageType['width']), intval($imageType['height'])))
 						$errors = true;
-				}
 
 		if ($errors)
 			$this->_errors[] = Tools::displayError('Cannot write supplier images into the supplier images folder. Please check the folder\'s writing permissions.');
@@ -272,27 +258,20 @@ class AdminImages extends AdminTab
 		foreach ($suppliersTypes AS $k => $imageType)
 			foreach ($languages AS $language)
 			{
-				$file['tmp_name'] = _PS_SUPP_IMG_DIR_.$language['iso_code'].'.jpg';
-				if (!file_exists($file['tmp_name']))
-					$file['tmp_name'] = _PS_PROD_IMG_DIR_.Language::getIsoById(intval(Configuration::get('PS_LANG_DEFAULT'))).'.jpg';
-				$file['type'] = 'image/jpg';
+				$file = _PS_SUPP_IMG_DIR_.$language['iso_code'].'.jpg';
+				if (!file_exists($file))
+					$file = _PS_PROD_IMG_DIR_.Language::getIsoById(intval(Configuration::get('PS_LANG_DEFAULT'))).'.jpg';
 				if (!imageResize($file, _PS_SUPP_IMG_DIR_.$language['iso_code'].'-default-'.stripslashes($imageType['name']).'.jpg',
 				intval($imageType['width']), intval($imageType['height'])))
 					$errors = true;
 			}
 		if ($errors)
 			$this->_errors[] = Tools::displayError('Cannot write no-picture image into the suppliers images folder.<br />Please check its writing permissions.');
-			
-		
-		
-		
-		
-		
-		
+
 		/* Delete scenes images */
 		$toDel = scandir(_PS_SCENE_IMG_DIR_);
 		foreach ($toDel AS $d)
-			if (ereg('^[0-9]+\-(.*)\.jpg$', $d) OR ereg('^([[:lower:]]{2})\-default\-(.*)\.jpg$', $d))
+			if (preg_match('/^[0-9]+\-(.*)\.jpg$/', $d) OR preg_match('/^([[:lower:]]{2})\-default\-(.*)\.jpg$/', $d))
 				unlink(_PS_SCENE_IMG_DIR_.$d);
 
 		/* Regenerate scenes images */
@@ -300,14 +279,10 @@ class AdminImages extends AdminTab
 		$scenesImages = scandir(_PS_SCENE_IMG_DIR_);
 		$errors = false;
 		foreach ($scenesImages AS $image)
-			if (ereg('^[0-9]*\.jpg$', $image))
+			if (preg_match('/^[0-9]*\.jpg$/', $image))
 				foreach ($scenesTypes AS $k => $imageType)
-				{
-					$file['tmp_name'] = _PS_SCENE_IMG_DIR_.$image;
-					$file['type'] = 'image/jpg';
-					if (!imageResize($file, _PS_SCENE_IMG_DIR_.substr($image, 0, -4).'-'.stripslashes($imageType['name']).'.jpg', intval($imageType['width']), intval($imageType['height'])))
+					if (!imageResize(_PS_SCENE_IMG_DIR_.$image, _PS_SCENE_IMG_DIR_.substr($image, 0, -4).'-'.stripslashes($imageType['name']).'.jpg', intval($imageType['width']), intval($imageType['height'])))
 						$errors = true;
-				}
 
 		if ($errors)
 			$this->_errors[] = Tools::displayError('Cannot write scene images into the scene images folder. Please check the folder\'s writing permissions.');
@@ -317,29 +292,20 @@ class AdminImages extends AdminTab
 		foreach ($scenesTypes AS $k => $imageType)
 			foreach ($languages AS $language)
 			{
-				$file['tmp_name'] = _PS_SCENE_IMG_DIR_.$language['iso_code'].'.jpg';
-				if (!file_exists($file['tmp_name']))
-					$file['tmp_name'] = _PS_PROD_IMG_DIR_.Language::getIsoById(intval(Configuration::get('PS_LANG_DEFAULT'))).'.jpg';
-				$file['type'] = 'image/jpg';
+				$file = _PS_SCENE_IMG_DIR_.$language['iso_code'].'.jpg';
+				if (!file_exists($file))
+					$file = _PS_PROD_IMG_DIR_.Language::getIsoById(intval(Configuration::get('PS_LANG_DEFAULT'))).'.jpg';
 				if (!imageResize($file, _PS_SCENE_IMG_DIR_.$language['iso_code'].'-default-'.stripslashes($imageType['name']).'.jpg',
 				intval($imageType['width']), intval($imageType['height'])))
 					$errors = true;
 			}
 		if ($errors)
 			$this->_errors[] = Tools::displayError('Cannot write no-picture image into the scenes images folder.<br />Please check its writing permissions.');
-		
-		
-		
-		
-		
-		
-		
-		
 			
 		/* Delete products images */
 		$toDel = scandir(_PS_PROD_IMG_DIR_);
 		foreach ($toDel AS $d)
-			if (ereg('^[0-9]+\-[0-9]+\-(.*)\.jpg$', $d) OR ereg('^([[:lower:]]{2})\-default\-(.*)\.jpg$', $d))
+			if (preg_match('/^[0-9]+\-[0-9]+\-(.*)\.jpg$/', $d) OR preg_match('/^([[:lower:]]{2})\-default\-(.*)\.jpg$/', $d))
 				unlink(_PS_PROD_IMG_DIR_.$d);
 		
 		
@@ -348,10 +314,9 @@ class AdminImages extends AdminTab
 		foreach ($productsTypes AS $k => $imageType)
 			foreach ($languages AS $language)
 			{
-				$file['tmp_name'] = _PS_PROD_IMG_DIR_.$language['iso_code'].'.jpg';
-				if (!file_exists($file['tmp_name']))
-					$file['tmp_name'] = _PS_PROD_IMG_DIR_.Language::getIsoById(intval(Configuration::get('PS_LANG_DEFAULT'))).'.jpg';
-				$file['type'] = 'image/jpg';
+				$file = _PS_PROD_IMG_DIR_.$language['iso_code'].'.jpg';
+				if (!file_exists($file))
+					$file = _PS_PROD_IMG_DIR_.Language::getIsoById(intval(Configuration::get('PS_LANG_DEFAULT'))).'.jpg';
 				$newFile = _PS_PROD_IMG_DIR_.$language['iso_code'].'-default-'.stripslashes($imageType['name']).'.jpg';
 				if (!imageResize($file, $newFile,
 				intval($imageType['width']), intval($imageType['height'])))
@@ -367,10 +332,8 @@ class AdminImages extends AdminTab
 			if (file_exists(_PS_PROD_IMG_DIR_.$image['id_product'].'-'.$image['id_image'].'.jpg'))
 				foreach ($productsTypes AS $k => $imageType)
 				{
-					$file['tmp_name'] = _PS_PROD_IMG_DIR_.$image['id_product'].'-'.$image['id_image'].'.jpg';
-					$file['type'] = 'image/jpg';
 					$newFile = _PS_PROD_IMG_DIR_.$image['id_product'].'-'.$image['id_image'].'-'.stripslashes($imageType['name']).'.jpg';
-					if (!imageResize($file, $newFile, intval($imageType['width']), intval($imageType['height'])))
+					if (!imageResize(_PS_PROD_IMG_DIR_.$image['id_product'].'-'.$image['id_image'].'.jpg', $newFile, intval($imageType['width']), intval($imageType['height'])))
 						$errors = true;
 				}
 		}
@@ -386,7 +349,7 @@ class AdminImages extends AdminTab
 				if (file_exists(_PS_PROD_IMG_DIR_.$image['id_product'].'-'.$image['id_image'].'.jpg'))
 					foreach ($result AS $k => $module)
 						if ($moduleInstance = Module::getInstanceByName($module['name']) AND is_callable(array($moduleInstance, 'hookwatermark')))
-							$output .= call_user_func(array($moduleInstance, 'hookwatermark'), array('id_image' => $image['id_image'], 'id_product' => $image['id_product']));
+							call_user_func(array($moduleInstance, 'hookwatermark'), array('id_image' => $image['id_image'], 'id_product' => $image['id_product']));
 
 		if ($errors)
 			$this->_errors[] = Tools::displayError('Cannot write product image. Please check the folder\'s writing permissions.');

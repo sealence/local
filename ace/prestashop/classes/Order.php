@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -86,6 +86,9 @@ class		Order extends ObjectModel
 	/** @var string Delivery creation date */
 	public 		$delivery_date;
 	
+	/** @var boolean Order validity (paid and not canceled) */
+	public 		$valid;
+	
 	/** @var string Object creation date */
 	public 		$date_add;
 
@@ -150,42 +153,78 @@ class		Order extends ObjectModel
 		$fields['delivery_number'] = intval($this->delivery_number);
 		$fields['invoice_date'] = pSQL($this->invoice_date);
 		$fields['delivery_date'] = pSQL($this->delivery_date);
+		$fields['valid'] = intval($this->valid) ? 1 : 0;
 		$fields['date_add'] = pSQL($this->date_add);
 		$fields['date_upd'] = pSQL($this->date_upd);
 
 		return $fields;
 	}
-	
+
+	/* Does NOT delete a product but "cancel" it (which means return/refund/delete it depending of the case) */
 	public function deleteProduct($order, $orderDetail, $quantity)
 	{
 		if (!$currentStatus = intval($this->getCurrentState()))
 			return false;
-		
+
 		if ($this->hasBeenDelivered())
 		{
-			$orderDetail->product_quantity_return += $quantity;
+			$orderDetail->product_quantity_return += intval($quantity);
 			return $orderDetail->update();
 		}
 		elseif ($this->hasBeenPaid())
 		{
-			$orderDetail->product_quantity_cancelled += $quantity;
+			$orderDetail->product_quantity_refunded += intval($quantity);
 			return $orderDetail->update();
 		}
-		else
-		{
-			// Update order
-			$productPrice = ($orderDetail->product_price * (1 + ($orderDetail->tax_rate * 0.01))) * $quantity;
-			$order->total_paid -= $productPrice;
-			$order->total_paid_real -= $productPrice;
-			$order->total_products -= $productPrice;
+		return $this->_deleteProduct($orderDetail, intval($quantity));
+	}
 
-			// Update order detail
-			$orderDetail->product_quantity -= $quantity;
-			
-			if (!$orderDetail->product_quantity)
-				return $orderDetail->delete();
-			return $orderDetail->update() AND $order->update();
+	/* DOES delete the product */
+	private function _deleteProduct($orderDetail, $quantity)
+	{
+		$productPrice = round((floatval($orderDetail->product_price) * (1 + (floatval($orderDetail->tax_rate) * 0.01))) * intval($quantity), 2);
+		$productPriceWithoutTax = round(floatval($orderDetail->product_price) * intval($quantity), 2);
+
+		// Update order
+		$this->total_paid -= $productPrice;
+		$this->total_paid_real -= $productPrice;
+		$this->total_products -= $productPriceWithoutTax;
+
+		// Update order detail
+		$orderDetail->product_quantity -= intval($quantity);
+		
+		if (!$orderDetail->product_quantity)
+		{
+			if (!$orderDetail->delete())
+				return false;
+			if (count($this->getProductsDetail()) == 0)
+			{
+				global $cookie;
+				$history = new OrderHistory();
+				$history->id_order = intval($this->id);
+				$history->changeIdOrderState(_PS_OS_CANCELED_, intval($this->id));
+				if (!$history->addWithemail())
+					return false;
+			}
+			return $this->update();
 		}
+		return $orderDetail->update() AND $this->update();
+	}
+
+	public function deleteCustomization($id_customization, $quantity, $orderDetail)
+	{
+		if (!$currentStatus = intval($this->getCurrentState()))
+			return false;
+
+		if ($this->hasBeenDelivered())
+			return Db::getInstance()->Execute('UPDATE `'._DB_PREFIX_.'customization` SET `quantity_returned` = `quantity_returned` + '.intval($quantity).' WHERE `id_customization` = '.intval($id_customization).' AND `id_cart` = '.intval($this->id_cart).' AND `id_product` = '.intval($orderDetail->product_id));
+		elseif ($this->hasBeenPaid())
+			return Db::getInstance()->Execute('UPDATE `'._DB_PREFIX_.'customization` SET `quantity_refunded` = `quantity_refunded` + '.intval($quantity).' WHERE `id_customization` = '.intval($id_customization).' AND `id_cart` = '.intval($this->id_cart).' AND `id_product` = '.intval($orderDetail->product_id));
+		if (!Db::getInstance()->Execute('UPDATE `'._DB_PREFIX_.'customization` SET `quantity` = `quantity` - '.intval($quantity).' WHERE `id_customization` = '.intval($id_customization).' AND `id_cart` = '.intval($this->id_cart).' AND `id_product` = '.intval($orderDetail->product_id)))
+			return false;
+		if (!Db::getInstance()->Execute('DELETE FROM `'._DB_PREFIX_.'customization` WHERE `quantity` = 0'))
+			return false;
+		return $this->_deleteProduct($orderDetail, intval($quantity));
 	}
 
 	/**
@@ -195,7 +234,7 @@ class		Order extends ObjectModel
 	 *
 	 * @return array History entries ordered by date DESC
 	 */
-	public function getHistory($id_lang, $id_order_state = false)
+	public function getHistory($id_lang, $id_order_state = false, $no_hidden = false)
 	{
 		$id_lang = $id_lang ? intval($id_lang) : 'o.`id_lang`';
 		$query = '
@@ -203,9 +242,10 @@ class		Order extends ObjectModel
 			FROM `'._DB_PREFIX_.'orders` o
 			LEFT JOIN `'._DB_PREFIX_.'order_history` oh ON o.`id_order` = oh.`id_order`
 			LEFT JOIN `'._DB_PREFIX_.'order_state` os ON os.`id_order_state` = oh.`id_order_state`
-			LEFT JOIN `'._DB_PREFIX_.'order_state_lang` osl ON (os.`id_order_state` = osl.`id_order_state` AND osl.`id_lang` = '.$id_lang.')
+			LEFT JOIN `'._DB_PREFIX_.'order_state_lang` osl ON (os.`id_order_state` = osl.`id_order_state` AND osl.`id_lang` = '.intval($id_lang).')
 			LEFT JOIN `'._DB_PREFIX_.'employee` e ON e.`id_employee` = oh.`id_employee`
-			WHERE oh.id_order = '.intval($this->id);
+			WHERE oh.id_order = '.intval($this->id).'
+			'.($no_hidden ? ' AND os.hidden = 0' : '');
 		if (intval($id_order_state))
 			$query.= ' AND oh.`id_order_state` = '.intval($id_order_state);
 		$query.= ' ORDER BY oh.date_add DESC, oh.id_order_history DESC';
@@ -222,7 +262,14 @@ class		Order extends ObjectModel
 	
 	public function getLastMessage()
 	{
-		$sql = 'SELECT `message` FROM `'._DB_PREFIX_.'message` WHERE `id_order` = '.$this->id.' ORDER BY `id_message` desc';
+		$sql = 'SELECT `message` FROM `'._DB_PREFIX_.'message` WHERE `id_order` = '.intval($this->id).' ORDER BY `id_message` desc';
+		$result = Db::getInstance()->getRow($sql);
+		return $result['message'];
+	}
+
+	public function getFirstMessage()
+	{
+		$sql = 'SELECT `message` FROM `'._DB_PREFIX_.'message` WHERE `id_order` = '.intval($this->id).' ORDER BY `id_message` asc';
 		$result = Db::getInstance()->getRow($sql);
 		return $result['message'];
 	}
@@ -290,15 +337,18 @@ class		Order extends ObjectModel
 		$products = $this->getProducts();
 		if (count($products) < 1)
 			return false;
-		$virtual = 1;
+		$virtual = false;
 		foreach ($products AS $product)
 		{
-			$isVirtualProduct = Validate::isUnsignedInt(ProductDownload::getIdFromIdProduct(intval($product['product_id'])));
-			if ($strict === false AND $isVirtualProduct)
-				return true;
-			$virtual &= ($isVirtualProduct ? true : false);
+			$pd = ProductDownload::getIdFromIdProduct(intval($product['product_id']));
+			if ($pd AND Validate::isUnsignedInt($pd) AND $product['download_hash'])
+			{
+				if ($strict === false)
+					return true;
+				$virtual &= true;
+			}
 		}
-		return((bool) $virtual);
+		return $virtual;
 	}
 
 
@@ -359,26 +409,29 @@ class		Order extends ObjectModel
 
 	public function isLogable()
 	{
-		$result = Db::getInstance()->getRow('
-		SELECT oh.`id_order_state`, os.`logable`
-		FROM `'._DB_PREFIX_.'order_history` oh
-		LEFT JOIN `'._DB_PREFIX_.'order_state` os ON (os.`id_order_state` = oh.`id_order_state`)
-		WHERE oh.`id_order` = '.intval($this->id).'
-		ORDER BY oh.`date_add` DESC');
-
-		return $result ? intval($result['logable']) : false;
+		return $this->valid;
 	}
 	
 	public function hasBeenDelivered()
 	{
-		return sizeof($this->getHistory(Configuration::get('PS_DEFAULT_LANG'), _PS_OS_DELIVERED_));
+		return sizeof($this->getHistory(intval($this->id_lang), _PS_OS_DELIVERED_));
 	}
 	
 	public function hasBeenPaid()
 	{
-		return sizeof($this->getHistory(Configuration::get('PS_DEFAULT_LANG'), _PS_OS_PAYMENT_));
+		return sizeof($this->getHistory(intval($this->id_lang), _PS_OS_PAYMENT_));
 	}
-	
+
+	public function hasBeenShipped()
+	{
+		return sizeof($this->getHistory(intval($this->id_lang), _PS_OS_SHIPPING_));
+	}
+
+	public function isInPreparation()
+	{
+		return sizeof($this->getHistory(intval($this->id_lang), _PS_OS_PREPARATION_));
+	}
+
 	/**
 	 * Get customer orders
 	 *
@@ -426,8 +479,23 @@ class		Order extends ObjectModel
 		$result = Db::getInstance()->ExecuteS('
 		SELECT `id_order`
 		FROM `'._DB_PREFIX_.'orders`
-		WHERE DATE_ADD(date_add, INTERVAL -1 DAY) <= \''.$date_to.'\' AND date_add >= \''.$date_from.'\''
-		.($type ? ' AND '.strval($type).'_number != 0' : '')
+		WHERE DATE_ADD(date_add, INTERVAL -1 DAY) <= \''.pSQL($date_to).'\' AND date_add >= \''.pSQL($date_from).'\''
+		.($type ? ' AND '.pSQL(strval($type)).'_number != 0' : '')
+		.($id_customer ? ' AND id_customer = '.intval($id_customer) : ''));
+
+		$orders = array();
+		foreach ($result AS $order)
+			$orders[] = intval($order['id_order']);
+		return $orders;
+	}
+
+	static public function getOrdersIdInvoiceByDate($date_from, $date_to, $id_customer = NULL, $type = NULL)
+	{
+		$result = Db::getInstance()->ExecuteS('
+		SELECT `id_order`
+		FROM `'._DB_PREFIX_.'orders`
+		WHERE DATE_ADD(invoice_date, INTERVAL -1 DAY) <= \''.pSQL($date_to).'\' AND invoice_date >= \''.pSQL($date_from).'\''
+		.($type ? ' AND '.pSQL(strval($type)).'_number != 0' : '')
 		.($id_customer ? ' AND id_customer = '.intval($id_customer) : ''));
 
 		$orders = array();
@@ -450,9 +518,28 @@ class		Order extends ObjectModel
 		foreach ($products AS $k => $row)
 		{
 			$qty = intval($row['product_quantity']);
-			$total += round(floatval($row['product_price']) * (floatval($row['tax_rate']) * 0.01 + 1), 2) * $qty;
+			$total += floatval($row['product_price']) * (floatval($row['tax_rate']) * 0.01 + 1) * $qty;
 		}
-		return $total;
+		return round($total, 2);
+	}
+
+    /**
+     * Get product total without taxes
+     *
+     * @return Product total with taxes
+     */
+    public function getTotalProductsWithoutTaxes($products = false)
+	{
+		if (!$products)
+			$products = $this->getProductsDetail();
+
+        $total = 0;
+		foreach ($products AS $k => $row)
+		{
+			$qty = intval($row['product_quantity']);
+			$total += floatval($row['product_price']) * $qty;
+		}
+		return round($total, 2);
 	}
 
 	/**
@@ -537,8 +624,8 @@ class		Order extends ObjectModel
 		if (!$nbReturnDays)
 			return true;
 		$result = Db::getInstance()->getRow('
-		SELECT TO_DAYS(NOW()) - TO_DAYS(`date_add`)  AS days FROM `'._DB_PREFIX_.'orders`
-		WHERE `id_order` = '.$this->id);
+		SELECT TO_DAYS(NOW()) - TO_DAYS(`delivery_date`)  AS days FROM `'._DB_PREFIX_.'orders`
+		WHERE `id_order` = '.intval($this->id));
 		if ($result['days'] <= $nbReturnDays)
 			return true;
 		return false;
@@ -553,26 +640,28 @@ class		Order extends ObjectModel
 	public function setInvoice()
 	{
 		// Set invoice number
-		$this->invoice_number = intval(Configuration::get('PS_INVOICE_NUMBER'));
-		Configuration::updateValue('PS_INVOICE_NUMBER', $this->invoice_number + 1);
-		if (!intval($this->invoice_number))
+		$number = intval(Configuration::get('PS_INVOICE_NUMBER'));
+		if (!intval($number))
 			die(Tools::displayError('Invalid invoice number'));
-		
+		$this->invoice_number = $number;
+		Configuration::updateValue('PS_INVOICE_NUMBER', $number + 1);
+
 		// Set invoice date
 		$this->invoice_date = date('Y-m-d H:i:s');
 		
-		// Update object
+		// Save
 		$this->update();
 	}
 	
 	public function setDelivery()
 	{
 		// Set delivery number
-		$this->delivery_number = intval(Configuration::get('PS_DELIVERY_NUMBER'));
-		Configuration::updateValue('PS_DELIVERY_NUMBER', $this->delivery_number + 1);
-		if (!intval($this->delivery_number))
+		$number = intval(Configuration::get('PS_DELIVERY_NUMBER'));
+		if (!intval($number))
 			die(Tools::displayError('Invalid delivery number'));
-		
+		$this->delivery_number = $number;
+		Configuration::updateValue('PS_DELIVERY_NUMBER', $number + 1);
+
 		// Set delivery date
 		$this->delivery_date = date('Y-m-d H:i:s');
 		
@@ -580,14 +669,14 @@ class		Order extends ObjectModel
 		$this->update();
 	}
 	
-	static public function  printPDFIcons($id_order)
+	static public function printPDFIcons($id_order, $tr)
 	{
 		$order = new Order($id_order);
 		$orderState = OrderHistory::getLastOrderState($id_order);
 		if (!Validate::isLoadedObject($orderState) OR !Validate::isLoadedObject($order))
 			die(Tools::displayError('Invalid objects!'));
 		echo '<span style="width:20px; margin-right:5px;">';
-		if ($orderState->invoice OR $order->invoice_number)
+		if (($orderState->invoice OR $order->invoice_number) AND intval($tr['product_number']))
 			echo '<a href="pdf.php?id_order='.intval($order->id).'&pdf"><img src="../img/admin/tab-invoice.gif" alt="invoice" /></a>';
 		else
 			echo '&nbsp;';
@@ -616,6 +705,15 @@ class		Order extends ObjectModel
 		FROM '._DB_PREFIX_.'order_detail
 		WHERE id_order = '.intval($this->id));
 		return $result['weight'];
+	}
+
+	static public function getInvoice($id_invoice)
+	{
+		$query = '
+			SELECT `invoice_number`, `id_order`
+			FROM `'._DB_PREFIX_.'orders`
+			WHERE invoice_number = '.intval($id_invoice);
+		return Db::getInstance()->getRow($query);
 	}
 }
 

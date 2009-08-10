@@ -7,7 +7,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -35,12 +35,13 @@ class AdminTabs extends AdminTab
 		$this->fieldsDisplay = array(
 		'id_tab' => array('title' => $this->l('ID'), 'align' => 'center', 'width' => 25),
 		'name' => array('title' => $this->l('Name'), 'width' => 200),
-		'logo' => array('title' => $this->l('Icon'), 'align' => 'center', 'image' => 't', 'orderby' => false, 'search' => false),
-		'parent' => array('title' => $this->l('Parent'), 'width' => 200, 'type' => 'select', 'select' => $tabs, 'filter_key' => 'a!id_parent'));
+		'logo' => array('title' => $this->l('Icon'), 'align' => 'center', 'image' => 't', 'image_id' => 'class_name', 'orderby' => false, 'search' => false),
+		'parent' => array('title' => $this->l('Parent'), 'width' => 200, 'type' => 'select', 'select' => $tabs, 'filter_key' => 'a!id_parent'),
+		'module' => array('title' => $this->l('Module')));
 	
 		parent::__construct();
 	}
-	
+
 	public function postProcess()
 	{
 		if (($id_tab = intval(Tools::getValue('id_tab'))) AND ($direction = Tools::getValue('move')) AND Validate::isLoadedObject($tab = new Tab($id_tab)))
@@ -56,7 +57,7 @@ class AdminTabs extends AdminTab
 			parent::postProcess();
 		}
 	}
-	
+
 	private function _posTabs($name, $arrayTabs)
 	{
 		global $currentIndex;
@@ -99,11 +100,11 @@ class AdminTabs extends AdminTab
 	public function displayForm()
 	{
 		global $currentIndex, $cookie;
-		
+
 		$obj = $this->loadObject(true);
 		$defaultLanguage = intval(Configuration::get('PS_LANG_DEFAULT'));
 		$languages = Language::getLanguages();
-		
+
 		echo '
 		<script type="text/javascript">
 			id_language = Number('.$defaultLanguage.');
@@ -119,7 +120,7 @@ class AdminTabs extends AdminTab
 					<div id="name_'.$language['id_lang'].'" style="display: '.($language['id_lang'] == $defaultLanguage ? 'block' : 'none').'; float: left;">
 						<input size="33" type="text" name="name_'.$language['id_lang'].'" value="'.htmlentities($this->getFieldValue($obj, 'name', intval($language['id_lang'])), ENT_COMPAT, 'UTF-8').'" /><sup> *</sup>
 						<span class="hint" name="help_box">'.$this->l('Invalid characters:').' <>;=#{}<span class="hint-pointer">&nbsp;</span></span>
-					</div>';							
+					</div>';
 				$this->displayFlags($languages, $defaultLanguage, 'name', 'name');
 		echo '
 				</div>
@@ -129,9 +130,14 @@ class AdminTabs extends AdminTab
 					<input type="text" name="class_name" value="'.htmlentities($this->getFieldValue($obj, 'class_name'), ENT_COMPAT, 'UTF-8').'" /> <sup>*</sup>
 				</div>
 				<div class="clear">&nbsp;</div>
+				<label>'.$this->l('Module:').' </label>
+				<div class="margin-form">
+					<input type="text" name="module" value="'.htmlentities($this->getFieldValue($obj, 'module'), ENT_COMPAT, 'UTF-8').'" />
+				</div>
+				<div class="clear">&nbsp;</div>
 				<label>'.$this->l('Icon:').'</label>
 				<div class="margin-form">
-					<img src="../img/t/'.$obj->id.'.gif" />&nbsp;/img/t/'.$obj->id.'.gif
+					'.($obj->id ? '<img src="../img/t/'.$obj->class_name.'.gif" />&nbsp;/img/t/'.$obj->class_name.'.gif' : '').'
 					<p><input type="file" name="icon" /></p>
 					<p>'.$this->l('Upload logo from your computer').' (.gif, .jpg, .jpeg '.$this->l('or').' .png)</p>
 				</div>
@@ -139,7 +145,8 @@ class AdminTabs extends AdminTab
 				<label>'.$this->l('Parent:').'</label>
 				<div class="margin-form">
 					<select name="id_parent">
-						<option value="0">'.$this->l('Home').'</option>';
+						<option value="-1" '.(($this->getFieldValue($obj, 'id_parent') == -1) ? 'selected="selected"' : '').'>'.$this->l('None').'</option>
+						<option value="0" '.(($this->getFieldValue($obj, 'id_parent') == 0) ? 'selected="selected"' : '').'>'.$this->l('Home').'</option>';
 		foreach (Tab::getTabs(intval($cookie->id_lang), 0) AS $tab)
 			echo '		<option value="'.$tab['id_tab'].'" '.($tab['id_tab'] == $this->getFieldValue($obj, 'id_parent') ? 'selected="selected"' : '').'>'.$tab['name'].'</option>';
 		echo '		</select>
@@ -152,6 +159,10 @@ class AdminTabs extends AdminTab
 			</fieldset>
 		</form>';
 	}
-}
 
-?>
+	public function afterImageUpload()
+	{
+		$obj = $this->loadObject(true);
+		@rename(_PS_IMG_DIR_.'t/'.$obj->id.'.gif', _PS_IMG_DIR_.'t/'.$obj->class_name.'.gif');
+	}
+}

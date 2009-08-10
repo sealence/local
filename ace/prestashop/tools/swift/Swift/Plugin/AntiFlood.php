@@ -89,7 +89,7 @@ class Swift_Plugin_AntiFlood implements Swift_Events_SendListener
    * Swift's SendEvent listener.
    * Invoked when Swift sends a message
    * @param Swift_Events_SendEvent The event information
-   * @throws Swift_Connection_Exception If the connection cannot be closed/re-opened
+   * @throws Swift_ConnectionException If the connection cannot be closed/re-opened
    */
   public function sendPerformed(Swift_Events_SendEvent $e)
   {

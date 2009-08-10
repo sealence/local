@@ -48,7 +48,11 @@ if (Tools::isSubmit('submitIdentity'))
 			if (Tools::getValue('passwd'))
 				$cookie->passwd = $customer->passwd;
 			if ($customer->update())
+			{
+				$cookie->customer_lastname = $customer->lastname;
+				$cookie->customer_firstname = $customer->firstname;
 				$smarty->assign('confirmation', 1);
+			}
 			else
 				$errors[] = Tools::displayError('impossible to update information');
 		}
@@ -58,7 +62,7 @@ else
 	$_POST = array_map('stripslashes', $customer->getFields());
 
 if ($customer->birthday)
-	$birthday = split('-', $customer->birthday);
+	$birthday = explode('-', $customer->birthday);
 else
 	$birthday = array('-', '-', '-');
 

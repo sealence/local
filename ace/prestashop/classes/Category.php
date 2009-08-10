@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -58,7 +58,7 @@ class		Category extends ObjectModel
 	protected $tables = array ('category', 'category_lang');
 
 	protected 	$fieldsRequired = array('id_parent', 'active');
- 	protected 	$fieldsSize = array('id_parent' => 4, 'active' => 1);
+ 	protected 	$fieldsSize = array('id_parent' => 10, 'active' => 1);
  	protected 	$fieldsValidate = array('active' => 'isBool');
 	protected 	$fieldsRequiredLang = array('name', 'link_rewrite');
  	protected 	$fieldsSizeLang = array('name' => 64, 'link_rewrite' => 64, 'meta_title' => 128, 'meta_description' => 128, 'meta_description' => 128);
@@ -107,7 +107,9 @@ class		Category extends ObjectModel
 		foreach ($this->name AS $k => $value)
 			if (preg_match('/^[1-9]\./', $value))
 				$this->name[$k] = '0'.$value;
-		return parent::add($autodate);
+		$ret = parent::add($autodate);
+		$this->updateGroup(Tools::getValue('groupBox'));
+		return $ret;
 	}
 
 	public	function update($nullValues = false)
@@ -116,23 +118,7 @@ class		Category extends ObjectModel
 		foreach ($this->name AS $k => $value)
 			if (preg_match('/^[1-9]\./', $value))
 				$this->name[$k] = '0'.$value;
-		if (!parent::update())
-			return false;
-		return $this->_updateChildren($nullValues);
-	}
-
-	private function _updateChildren($nullValues = false)
-	{
-		$children = $this->getSubCategories(intval(Configuration::get('PS_LANG_DEFAULT')), false);
-		foreach ($children AS $childDatas)
-		{
-			$childObject = new Category(intval($childDatas['id_category']));
-			if (!Validate::isLoadedObject($childObject))
-				die(Tools::displayError());
-			if (!$childObject->update($nullValues))
-				return false;
-		}
-		return true;
+		return parent::update();
 	}
 
 	/**
@@ -222,10 +208,9 @@ class		Category extends ObjectModel
 
 		/* Delete category and its child from database */
 		$list = sizeof($toDelete) > 1 ? implode(',', $toDelete) : intval($this->id);
-		if (Db::getInstance()->Execute('DELETE FROM `'._DB_PREFIX_.'category` WHERE `id_category` IN ('.$list.')') === false OR
-			Db::getInstance()->Execute('DELETE FROM `'._DB_PREFIX_.'category_lang` WHERE `id_category` IN ('.$list.')') === false OR
-			Db::getInstance()->Execute('DELETE FROM `'._DB_PREFIX_.'category_product` WHERE `id_category` IN ('.$list.')') === false)
-			return false;
+		Db::getInstance()->Execute('DELETE FROM `'._DB_PREFIX_.'category` WHERE `id_category` IN ('.$list.')');
+		Db::getInstance()->Execute('DELETE FROM `'._DB_PREFIX_.'category_lang` WHERE `id_category` IN ('.$list.')');
+		Db::getInstance()->Execute('DELETE FROM `'._DB_PREFIX_.'category_product` WHERE `id_category` IN ('.$list.')');
 
 		/* Delete categories images */
 		foreach ($toDelete AS $id_category)
@@ -307,7 +292,7 @@ class		Category extends ObjectModel
 	}
 
 	/**
-	  * Return current category children
+	  * Return current category childs
 	  *
 	  * @param integer $id_lang Language ID
 	  * @param boolean $active return only active categories
@@ -320,7 +305,7 @@ class		Category extends ObjectModel
 	 		die(Tools::displayError());
 
 		$result = Db::getInstance()->ExecuteS('
-		SELECT *
+		SELECT c.*, cl.id_lang, cl.name, cl.description, cl.link_rewrite, cl.meta_title, cl.meta_keywords, cl.meta_description 
 		FROM `'._DB_PREFIX_.'category` c
 		LEFT JOIN `'._DB_PREFIX_.'category_lang` cl ON (c.`id_category` = cl.`id_category` AND `id_lang` = '.intval($id_lang).')
 		WHERE `id_parent` = '.intval($this->id).'
@@ -328,15 +313,73 @@ class		Category extends ObjectModel
 		ORDER BY `name` ASC');
 
 		/* Modify SQL result */
-		$resultsArray = array();
-		foreach ($result AS $row)
+		foreach ($result AS &$row)
 		{
 			$row['name'] = Category::hideCategoryPosition($row['name']);
 			$row['id_image'] = (file_exists(_PS_CAT_IMG_DIR_.$row['id_category'].'.jpg')) ? $row['id_category'] : Language::getIsoById($cookie->id_lang).'-default';
 			$row['legend'] = 'no picture';
-			$resultsArray[] = $row;
 		}
-		return $resultsArray;
+		return $result;
+	}
+	
+	private static function getAllSubCats(&$all_cats, $id_cat, $id_lang)
+	{
+		$category = new Category(intval($id_cat));
+		$sub_cats = $category->getSubcategories($id_lang);
+		if(count($sub_cats) > 0)
+			foreach ($sub_cats AS $sub_cat)
+			{
+				$all_cats[] = $sub_cat['id_category'];
+				self::getAllSubCats($all_cats, $sub_cat['id_category'], $id_lang);
+			}
+	}
+	
+	public static function countNbProductAndSub($id_category, $id_lang)
+	{
+		$tab = array(intval($id_category));
+		Category::getAllSubCats($tab, intval($id_category), intval($id_lang));
+		
+		$listCategories = implode(',', $tab);
+		$sql = 'SELECT
+		(
+		  (
+		    /* quantity of products witch don\'t have attributes */
+		    IFNULL((
+				  SELECT SUM(quantity)
+				  FROM `'._DB_PREFIX_.'product
+				  WHERE id_product NOT IN
+				  (
+				    /* products with attributes */
+				    SELECT DISTINCT(id_product)
+				    FROM `'._DB_PREFIX_.'product_attribute
+				  )
+				  AND id_product IN
+				  (
+				  	/* products direclty in the categories listed bellow */
+				  	SELECT DISTINCT(id_product)
+				  	FROM `'._DB_PREFIX_.'category_product
+				  	WHERE id_category IN ('.$listCategories.')
+				  )
+				),0)
+		  )
+		  +
+		  (
+		    /* quantity of products witch have attributes */
+				IFNULL((
+				  SELECT SUM(quantity)
+				  FROM `'._DB_PREFIX_.'product_attribute pa
+				  WHERE pa.id_product IN
+				  (
+				  	/* products direclty in the categories listed bellow */
+				  	SELECT DISTINCT(id_product)
+				  	FROM `'._DB_PREFIX_.'category_product
+				  	WHERE id_category IN ('.$listCategories.')
+				  )
+				),0)
+		  )
+		) as nb';
+		$result = Db::getInstance()->getRow($sql);
+		return $result['nb'];
 	}
 
 	/**
@@ -360,7 +403,7 @@ class		Category extends ObjectModel
 			$orderBy = 'position';
 		if (empty($orderWay))
 			$orderWay = 'ASC';
-		if ($orderBy == 'id_product' OR	$orderBy == 'price' OR	$orderBy == 'date_add')
+		if ($orderBy == 'id_product' OR	$orderBy == 'date_add')
 			$orderByPrefix = 'p';
 		elseif ($orderBy == 'name')
 			$orderByPrefix = 'pl';
@@ -371,6 +414,9 @@ class		Category extends ObjectModel
 		}
 		elseif ($orderBy == 'position')
 			$orderByPrefix = 'cp';
+		
+		if ($orderBy == 'price')
+			$orderBy = 'orderprice';
       
 		if (!Validate::isBool($active) OR !Validate::isOrderBy($orderBy) OR !Validate::isOrderWay($orderWay))
 			die (Tools::displayError());
@@ -390,17 +436,18 @@ class		Category extends ObjectModel
 		}
 
 		$sql = '
-		SELECT p.*, pa.`id_product_attribute`, pl.`description`, pl.`description_short`, pl.`available_now`, pl.`available_later`, pl.`link_rewrite`, pl.`meta_description`, pl.`meta_keywords`, pl.`meta_title`, pl.`name`, i.`id_image`, il.`legend`, m.`name` AS manufacturer_name, tl.`name` AS tax_name, t.`rate`, cl.`name` AS category_default, DATEDIFF(p.`date_add`, DATE_SUB(NOW(), INTERVAL '.(Validate::isUnsignedInt(Configuration::get('PS_NB_DAYS_NEW_PRODUCT')) ? Configuration::get('PS_NB_DAYS_NEW_PRODUCT') : 20).' DAY)) > 0 AS new
+		SELECT p.*, pa.`id_product_attribute`, pl.`description`, pl.`description_short`, pl.`available_now`, pl.`available_later`, pl.`link_rewrite`, pl.`meta_description`, pl.`meta_keywords`, pl.`meta_title`, pl.`name`, i.`id_image`, il.`legend`, m.`name` AS manufacturer_name, tl.`name` AS tax_name, t.`rate`, cl.`name` AS category_default, DATEDIFF(p.`date_add`, DATE_SUB(NOW(), INTERVAL '.(Validate::isUnsignedInt(Configuration::get('PS_NB_DAYS_NEW_PRODUCT')) ? Configuration::get('PS_NB_DAYS_NEW_PRODUCT') : 20).' DAY)) > 0 AS new,
+					(p.price - IF((DATEDIFF(reduction_from, CURDATE()) <= 0 AND DATEDIFF(reduction_to, CURDATE()) >=0) OR reduction_from = reduction_to, IFNULL(reduction_price, (p.price * reduction_percent / 100)),0)) AS orderprice 
 		FROM `'._DB_PREFIX_.'category_product` cp
-		LEFT JOIN `'._DB_PREFIX_.'product` p ON (p.`id_product` = cp.`id_product`)
+		LEFT JOIN `'._DB_PREFIX_.'product` p ON p.`id_product` = cp.`id_product`
 		LEFT JOIN `'._DB_PREFIX_.'product_attribute` pa ON (p.`id_product` = pa.`id_product` AND default_on = 1)
 		LEFT JOIN `'._DB_PREFIX_.'category_lang` cl ON (p.`id_category_default` = cl.`id_category` AND cl.`id_lang` = '.intval($id_lang).')
 		LEFT JOIN `'._DB_PREFIX_.'product_lang` pl ON (p.`id_product` = pl.`id_product` AND pl.`id_lang` = '.intval($id_lang).')
 		LEFT JOIN `'._DB_PREFIX_.'image` i ON (i.`id_product` = p.`id_product` AND i.`cover` = 1)
 		LEFT JOIN `'._DB_PREFIX_.'image_lang` il ON (i.`id_image` = il.`id_image` AND il.`id_lang` = '.intval($id_lang).')
-		LEFT JOIN `'._DB_PREFIX_.'tax` t ON (t.`id_tax` = p.`id_tax`)
+		LEFT JOIN `'._DB_PREFIX_.'tax` t ON t.`id_tax` = p.`id_tax`
 		LEFT JOIN `'._DB_PREFIX_.'tax_lang` tl ON (t.`id_tax` = tl.`id_tax` AND tl.`id_lang` = '.intval($id_lang).')
-		LEFT JOIN `'._DB_PREFIX_.'manufacturer` m ON (m.`id_manufacturer` = p.`id_manufacturer`)
+		LEFT JOIN `'._DB_PREFIX_.'manufacturer` m ON m.`id_manufacturer` = p.`id_manufacturer`
 		WHERE cp.`id_category` = '.intval($this->id).($active ? ' AND p.`active` = 1' : '').'
 		'.($id_supplier ? 'AND p.id_supplier = '.$id_supplier : '');
 		
@@ -410,13 +457,17 @@ class		Category extends ObjectModel
 			$sql .= 'LIMIT 0, '.intval($randomNumberProducts);
 		}
 		else
+		{
 			$sql .= 'ORDER BY '.(isset($orderByPrefix) ? $orderByPrefix.'.' : '').'`'.pSQL($orderBy).'` '.pSQL($orderWay).'
 			LIMIT '.((intval($p) - 1) * intval($n)).','.intval($n);
+		}
 		
 		$result = Db::getInstance()->ExecuteS($sql);
 		
 		if ($orderBy == 'price')
+		{
 			Tools::orderbyPrice($result, $orderWay);
+		}
 		if (!$result)
 			return false;
 
@@ -495,7 +546,7 @@ class		Category extends ObjectModel
 		$row = array();
 		if ($result)
 			foreach ($result AS $i)
-				$row[] = '('.implode(', ', array(intval($id_new), $i['id_category'], '(SELECT tmp.max + 1 FROM (SELECT MAX(cp.`position`) AS max FROM `'._DB_PREFIX_.'category_product` cp WHERE cp.`id_category`='.$i['id_category'].') AS tmp)')).')';
+				$row[] = '('.implode(', ', array(intval($id_new), $i['id_category'], '(SELECT tmp.max + 1 FROM (SELECT MAX(cp.`position`) AS max FROM `'._DB_PREFIX_.'category_product` cp WHERE cp.`id_category`='.intval($i['id_category']).') AS tmp)')).')';
 
 		$flag = Db::getInstance()->Execute('INSERT INTO `'._DB_PREFIX_.'category_product` (`id_product`, `id_category`, `position`) VALUES '.implode(',', $row));
 		return $flag;
@@ -595,7 +646,7 @@ class		Category extends ObjectModel
 	  * @return array Corresponding categories
 	  */
 	public function getParentsCategories($idLang = null)
-	{	
+	{
 		//get idLang
 		$idLang = is_null($idLang) ? _USER_ID_LANG_ : intval($idLang);
 		
@@ -631,7 +682,61 @@ class		Category extends ObjectModel
 		WHERE c.`id_category` = '.intval($id_category));
 		
 		return isset($row['id_category']);
-	}	
+	}
+	
+	
+	public function cleanGroups()
+	{
+		Db::getInstance()->Execute('DELETE FROM `'._DB_PREFIX_.'category_group` WHERE `id_category` = '.intval($this->id));
+	}
+	
+	public function addGroups($groups)
+	{
+		foreach ($groups as $group)
+		{
+			$row = array('id_category' => intval($this->id), 'id_group' => intval($group));
+			Db::getInstance()->AutoExecute(_DB_PREFIX_.'category_group', $row, 'INSERT');
+		}
+	}
+	
+	public function getGroups()
+	{
+		$groups = array();
+		$result = Db::getInstance()->ExecuteS('
+		SELECT cg.`id_group`
+		FROM '._DB_PREFIX_.'category_group cg
+		WHERE cg.`id_category` = '.intval($this->id));
+		foreach ($result as $group)
+			$groups[] = $group['id_group'];
+		return $groups;
+	}
+	
+	public function checkAccess($id_customer)
+	{
+		if (!$id_customer)
+		{
+			$result = Db::getInstance()->getRow('
+			SELECT ctg.`id_group`
+			FROM '._DB_PREFIX_.'category_group ctg
+			WHERE ctg.`id_category` = '.intval($this->id).' AND ctg.`id_group` = 1');
+		} else {
+			$result = Db::getInstance()->getRow('
+			SELECT ctg.`id_group`
+			FROM '._DB_PREFIX_.'category_group ctg
+			INNER JOIN '._DB_PREFIX_.'customer_group cg on (cg.`id_group` = ctg.`id_group` AND cg.`id_customer` = '.intval($id_customer).')
+			WHERE ctg.`id_category` = '.intval($this->id));
+		}
+		if ($result AND isset($result['id_group']) AND $result['id_group'])
+			return true;
+		return false;
+	}
+	
+	public function updateGroup($list)
+	{
+		$this->cleanGroups();
+		if ($list AND sizeof($list))
+			$this->addGroups($list);
+	}
 }
 
 ?>

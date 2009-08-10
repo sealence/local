@@ -4,10 +4,10 @@
   * Statistics
   * @category stats
   *
-  * @author John Thiriet / Epitech
+  * @author Damien Metzger / Epitech
   * @copyright Epitech / PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   */
   
 class StatsBestProducts extends ModuleGrid
@@ -24,7 +24,6 @@ class StatsBestProducts extends ModuleGrid
 		$this->name = 'statsbestproducts';
 		$this->tab = 'Stats';
 		$this->version = 1.0;
-		$this->page = basename(__FILE__, '.php');
 		
 		$this->_defaultSortColumn = 'totalPriceSold';
 		$this->_emptyMessage = $this->l('Empty recordset returned');
@@ -32,31 +31,52 @@ class StatsBestProducts extends ModuleGrid
 		
 		$this->_columns = array(
 			array(
+				'id' => 'reference',
+				'header' => $this->l('Ref.'),
+				'dataIndex' => 'reference',
+				'align' => 'left',
+				'width' => 50
+			),
+			array(
 				'id' => 'name',
 				'header' => $this->l('Name'),
 				'dataIndex' => 'name',
 				'align' => 'left',
-				'width' => 300
+				'width' => 100
 			),
 			array(
 				'id' => 'totalQuantitySold',
-				'header' => $this->l('Total Quantity Sold'),
+				'header' => $this->l('Qty sold'),
 				'dataIndex' => 'totalQuantitySold',
-				'width' => 30,
+				'width' => 50,
+				'align' => 'right'
+			),
+			array(
+				'id' => 'averageQuantitySold',
+				'header' => $this->l('Qty sold / day'),
+				'dataIndex' => 'averageQuantitySold',
+				'width' => 60,
 				'align' => 'right'
 			),
 			array(
 				'id' => 'totalPriceSold',
-				'header' => $this->l('Total Price Sold'),
+				'header' => $this->l('Sales'),
 				'dataIndex' => 'totalPriceSold',
-				'width' => 30,
+				'width' => 50,
 				'align' => 'right'
 			),
 			array(
 				'id' => 'totalPageViewed',
-				'header' => $this->l('Total Viewed'),
+				'header' => $this->l('Page viewed'),
 				'dataIndex' => 'totalPageViewed',
-				'width' => 30,
+				'width' => 60,
+				'align' => 'right'
+			),
+			array(
+				'id' => 'quantity',
+				'header' => $this->l('Stock'),
+				'dataIndex' => 'quantity',
+				'width' => 50,
 				'align' => 'right'
 			)
 		);
@@ -90,60 +110,47 @@ class StatsBestProducts extends ModuleGrid
 		return $this->_html;
 	}
 	
-	public function getTotalCount()
+	public function getTotalCount($dateBetween)
 	{
-		$result = Db::getInstance()->GetRow('SELECT COUNT(p.`id_product`) totalCount FROM `'._DB_PREFIX_.'product` p');
+		$result = Db::getInstance()->GetRow('
+		SELECT COUNT(DISTINCT p.`id_product`) totalCount
+		FROM `'._DB_PREFIX_.'product` p
+		LEFT JOIN '._DB_PREFIX_.'order_detail od ON od.product_id = p.id_product
+		LEFT JOIN '._DB_PREFIX_.'orders o ON od.id_order = o.id_order
+		WHERE p.active = 1 AND o.valid = 1
+		AND o.invoice_date BETWEEN '.$dateBetween);
 		return $result['totalCount'];
 	}
-	
-	public function setOption($option)
-	{
-	}
-	
+		
 	public function getData()
 	{
-		global $cookie;
-		$id_lang = (isset($cookie->id_lang) ? intval($cookie->id_lang) : Configuration::get('PS_LANG_DEFAULT'));
-	
-		$this->_totalCount = $this->getTotalCount();
+		$dateBetween = $this->getDate();
+		$arrayDateBetween = explode(' AND ', $dateBetween);
+		$this->_totalCount = $this->getTotalCount($dateBetween);
 
-$this->_query = 'SELECT
-pr.`id_product`,
-pl.`name`,
-IFNULL(t.`totalQuantitySold`, 0) AS totalQuantitySold,
-IFNULL(t.`totalPriceSold`, 0) AS totalPriceSold,
-(
-	SELECT IFNULL(SUM(pv.`counter`), 0)
-	FROM `'._DB_PREFIX_.'page` p
-	LEFT JOIN `'._DB_PREFIX_.'page_viewed` pv ON p.`id_page` = pv.`id_page`
-	LEFT JOIN `'._DB_PREFIX_.'product` pr2 ON CAST(p.`id_object` AS UNSIGNED INTEGER) = pr2.`id_product`
-	WHERE p.`id_page_type` = 1 AND pr.`id_product` = pr2.`id_product`		
-) AS totalPageViewed
-FROM `'._DB_PREFIX_.'product` pr
-LEFT JOIN `'._DB_PREFIX_.'product_lang` pl ON pr.`id_product` = pl.`id_product`
-LEFT OUTER JOIN
-(
-	SELECT
-	pr.`id_product`,
-	IFNULL(SUM(cp.`product_quantity`), 0) AS totalQuantitySold,
-	IFNULL(SUM(pr.`price` * cp.`product_quantity`), 0) AS totalPriceSold
-	FROM `'._DB_PREFIX_.'product` pr
-	LEFT OUTER JOIN `'._DB_PREFIX_.'order_detail` cp ON pr.`id_product` = cp.`product_id`
-	WHERE
-	(
-		SELECT
-		os.`invoice`
-		FROM `'._DB_PREFIX_.'order_history` oh
-		LEFT JOIN `'._DB_PREFIX_.'order_state` os ON os.`id_order_state` = oh.`id_order_state`
-		WHERE cp.`id_order` = oh.`id_order`
-		ORDER BY oh.`date_add` DESC, oh.`id_order_history` DESC
-		LIMIT 1
-	) = 1
-	GROUP BY pr.`id_product`
-) t
-ON t.`id_product` = pr.`id_product`
-WHERE
-pl.`id_lang` = '.$id_lang;
+		$this->_query = '
+		SELECT p.reference, p.id_product, pl.name,
+			(p.quantity + IFNULL((SELECT SUM(pa.quantity) FROM '._DB_PREFIX_.'product_attribute pa WHERE pa.id_product = p.id_product GROUP BY pa.id_product), 0)) as quantity,
+			IFNULL(SUM(od.product_quantity), 0) AS totalQuantitySold,
+			ROUND(IFNULL(IFNULL(SUM(od.product_quantity), 0) / (1 + LEAST(TO_DAYS('.$arrayDateBetween[1].'), TO_DAYS(NOW())) - GREATEST(TO_DAYS('.$arrayDateBetween[0].'), TO_DAYS(p.date_add))), 0), 2) as averageQuantitySold,
+			ROUND(IFNULL(SUM((p.price * od.product_quantity) / c.conversion_rate), 0), 2) AS totalPriceSold,
+			(
+				SELECT IFNULL(SUM(pv.counter), 0)
+				FROM '._DB_PREFIX_.'page pa
+				LEFT JOIN '._DB_PREFIX_.'page_viewed pv ON pa.id_page = pv.id_page
+				LEFT JOIN '._DB_PREFIX_.'date_range dr ON pv.id_date_range = dr.id_date_range
+				WHERE pa.id_object = p.id_product AND pa.id_page_type = 1
+				AND dr.time_start BETWEEN '.$dateBetween.'
+				AND dr.time_end BETWEEN '.$dateBetween.'
+			) AS totalPageViewed
+		FROM '._DB_PREFIX_.'product p
+		LEFT JOIN '._DB_PREFIX_.'product_lang pl ON (p.id_product = pl.id_product AND pl.id_lang = '.intval($this->getLang()).')
+		LEFT JOIN '._DB_PREFIX_.'order_detail od ON od.product_id = p.id_product
+		LEFT JOIN '._DB_PREFIX_.'orders o ON od.id_order = o.id_order
+		LEFT JOIN '._DB_PREFIX_.'currency c ON o.id_currency = c.id_currency
+		WHERE p.active = 1 AND o.valid = 1
+		AND o.invoice_date BETWEEN '.$dateBetween.'
+		GROUP BY p.id_product';
 
 		if (Validate::IsName($this->_sort))
 		{

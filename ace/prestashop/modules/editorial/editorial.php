@@ -9,12 +9,10 @@ class Editorial extends Module
 	{
 		$this->name = 'editorial';
 		$this->tab = 'Tools';
-		$this->version = '1.4';
+		$this->version = '1.5';
 		
-		/* The parent construct is required for translations */
 		parent::__construct();
 		
-		$this->page = basename(__FILE__, '.php');
 		$this->displayName = $this->l('Home text editor');
 		$this->description = $this->l('A text editor module for your homepage');
 	}
@@ -23,12 +21,6 @@ class Editorial extends Module
 	{
 		if (!parent::install())
 			return false;
-		// Trunk file if already exists with contents
-		/*
-		if (!$fd = @fopen(dirname(__FILE__).'/editorial.xml', 'w'))
-			return false;
-		@fclose($fd);
-		*/
 		return $this->registerHook('home');
 	}
 
@@ -37,10 +29,9 @@ class Editorial extends Module
 		foreach ($forbidden AS $line)
 			if ($key == $line)
 				return 0;
-		if (!eregi('^'.$section.'_', $key))
+		if (!preg_match('/^'.$section.'_/i', $key))
 			return 0;
-		$key = eregi_replace('^'.$section.'_', '', $key);
-		//$field = pSQL($field);
+		$key = preg_replace('/^'.$section.'_/i', '', $key);
 		$field = htmlspecialchars($field);
 		if (!$field)
 			return 0;
@@ -51,6 +42,7 @@ class Editorial extends Module
 	{
 		/* display the module name */
 		$this->_html = '<h2>'.$this->displayName.'</h2>';
+		$errors = '';
 
 		/* update the editorial xml */
 		if (isset($_POST['submitUpdate']))
@@ -87,27 +79,31 @@ class Editorial extends Module
 			if ($fd = @fopen(dirname(__FILE__).'/editorial.xml', 'w'))
 			{
 				if (!@fwrite($fd, $newXml))
-					$this->_html .= $this->displayError($this->l('Unable to write to the editor file.'));
+					$errors .= $this->displayError($this->l('Unable to write to the editor file.'));
 				if (!@fclose($fd))
-					$this->_html .= $this->displayError($this->l('Can\'t close the editor file.'));
+					$errors .= $this->displayError($this->l('Can\'t close the editor file.'));
 			}
 			else
-				$this->_html .= $this->displayError($this->l('Unable to update the editor file.<br />Please check the editor file\'s writing permissions.'));
+				$errors .= $this->displayError($this->l('Unable to update the editor file.<br />Please check the editor file\'s writing permissions.'));
 
 			/* upload the image */
 			if (isset($_FILES['body_homepage_logo']) AND isset($_FILES['body_homepage_logo']['tmp_name']) AND !empty($_FILES['body_homepage_logo']['tmp_name']))
 			{
 				Configuration::set('PS_IMAGE_GENERATION_METHOD', 1);
 				if ($error = checkImage($_FILES['body_homepage_logo'], $this->maxImageSize))
-					$this->_html .= $error;
-				elseif (!imageResize($_FILES['body_homepage_logo'], dirname(__FILE__).'/homepage_logo.jpg'))
-					$this->_html .= $this->displayError($this->l('An error occurred during the image upload.'));
+					$errors .= $error;
+				elseif (!$tmpName = tempnam(_PS_TMP_IMG_DIR_, 'PS') OR !move_uploaded_file($_FILES['body_homepage_logo']['tmp_name'], $tmpName))
+					return false;
+				elseif (!imageResize($tmpName, dirname(__FILE__).'/homepage_logo.jpg'))
+					$errors .= $this->displayError($this->l('An error occurred during the image upload.'));
+				unlink($tmpName);
 			}
+			$this->_html .= $errors == '' ? $this->displayConfirmation('Settings updated successfully') : $errors;
 		}
 
 		/* display the editorial's form */
 		$this->_displayForm();
-
+	
 		return $this->_html;
 	}
 
@@ -124,53 +120,42 @@ class Editorial extends Module
 		/* xml loading */
 		$xml = false;
 		if (file_exists(dirname(__FILE__).'/editorial.xml'))
-				if (!$xml = @simplexml_load_file(dirname(__FILE__).'/editorial.xml'))
+				if (!$xml = simplexml_load_file(dirname(__FILE__).'/editorial.xml'))
 					$this->_html .= $this->displayError($this->l('Your editor file is empty.'));
 
-		$this->_html .= '<br />
-			<script type="text/javascript" src="../js/tinymce/jscripts/tiny_mce/tiny_mce.js"></script>
-			<script language="javascript" type="text/javascript">
-				tinyMCE.init({
-					language : "';
-		$iso = Language::getIsoById(intval($cookie->id_lang));
-		$this->_html .= ((!file_exists(PS_ADMIN_DIR.'/../js/tinymce/jscripts/tiny_mce/langs/'.$iso.'.js')) ? 'en' : $iso).'",
-					mode : "textareas",
-					elements : "nourlconvert",
-					convert_urls : false,
+		$this->_html .= '
+		<script type="text/javascript" src="'.__PS_BASE_URI__.'js/tinymce/jscripts/tiny_mce/jquery.tinymce.js"></script>
+		<script type="text/javascript">
+		function tinyMCEInit(element)
+		{
+			$().ready(function() {
+				$(element).tinymce({
+					// Location of TinyMCE script
+					script_url : \''.__PS_BASE_URI__.'js/tinymce/jscripts/tiny_mce/tiny_mce.js\',
+					// General options
 					theme : "advanced",
-					theme_advanced_buttons1 : "bold, italic, underline, fontselect, fontsizeselect",
-					theme_advanced_buttons2 : "forecolor, backcolor, separator, justifyleft, justifycenter, justifyright, justifyfull, separator, bullist, numlist, separator, undo, redo, separator, link, unlink, separator, code",
-					theme_advanced_buttons3 : "",
+					plugins : "safari,pagebreak,style,layer,table,advimage,advlink,inlinepopups,preview,media,searchreplace,contextmenu,paste,directionality,fullscreen",
+					// Theme options
+					theme_advanced_buttons1 : "newdocument,|,bold,italic,underline,strikethrough,|,justifyleft,justifycenter,justifyright,justifyfull,styleselect,formatselect,fontselect,fontsizeselect",
+					theme_advanced_buttons2 : "cut,copy,paste,pastetext,pasteword,|,search,replace,|,bullist,numlist,|,outdent,indent,blockquote,|,undo,redo,|,link,unlink,anchor,image,cleanup,help,code,|,insertdate,inserttime,preview,|,forecolor,backcolor",
+					theme_advanced_buttons3 : "tablecontrols,|,hr,removeformat,visualaid,|,sub,sup,|,charmap,media,|,|,ltr,rtl,|,fullscreen",
+					theme_advanced_buttons4 : "insertlayer,moveforward,movebackward,absolute,|,styleprops,|,cite,abbr,acronym,del,ins,attribs,|,pagebreak",
 					theme_advanced_toolbar_location : "top",
 					theme_advanced_toolbar_align : "left",
-					plugins : "contextmenu, directionality, media, paste, preview, safari",
-					theme_advanced_buttons3_add : "ltr,rtl,pastetext,pasteword,selectall",
-					theme_advanced_buttons1_add : "media,preview",
-					paste_create_paragraphs : false,
-					paste_create_linebreaks : false,
-					paste_use_dialog : true,
-					paste_auto_cleanup_on_paste : true,
-					paste_convert_middot_lists : false,
-					paste_unindented_list_class : "unindentedList",
-					paste_convert_headers_to_strong : true,
-					paste_insert_word_content_callback : "convertWord",
-					plugin_preview_width : "500",
-					plugin_preview_height : "600",
-					extended_valid_elements : "a[name|href|target|title|onclick],img[class|src|border=0|alt|title|hspace|vspace|width|height|align|onmouseover|onmouseout|name],hr[class|width|size|noshade],font[face|size|color|style],span[class|align|style]"
+					theme_advanced_statusbar_location : "bottom",
+					theme_advanced_resizing : true,
+					content_css : "'.__PS_BASE_URI__.'themes/'._THEME_NAME_.'/css/global.css",
+					// Drop lists for link/image/media/template dialogs
+					template_external_list_url : "lists/template_list.js",
+					external_link_list_url : "lists/link_list.js",
+					external_image_list_url : "lists/image_list.js",
+					media_external_list_url : "lists/media_list.js"
 				});
-				function convertWord(type, content)
-				{
-					switch (type)
-					{
-						case "before":
-							break;
-						case "after":
-							break;
-					}
-					return content;
-				}
+			});
+		}
+		tinyMCEInit(\'textarea.rte\');
 		</script>
-		<script language="javascript">id_language = Number('.$defaultLanguage.');</script>
+		<script type="text/javascript">id_language = Number('.$defaultLanguage.');</script>
 		<form method="post" action="'.$_SERVER['REQUEST_URI'].'" enctype="multipart/form-data">
 			<fieldset style="width: 900px;">
 				<legend><img src="'.$this->_path.'logo.gif" alt="" title="" /> '.$this->displayName.'</legend>
@@ -212,7 +197,7 @@ class Editorial extends Module
 				{
 					$this->_html .= '
 					<div id="cpara_'.$language['id_lang'].'" style="display: '.($language['id_lang'] == $defaultLanguage ? 'block' : 'none').';float: left;">
-						<textarea cols="100" rows="30" id="body_paragraph_'.$language['id_lang'].'" name="body_paragraph_'.$language['id_lang'].'">'.($xml ? stripslashes(htmlspecialchars($xml->body->{'paragraph_'.$language['id_lang']})) : '').'</textarea>
+						<textarea class="rte" cols="70" rows="30" id="body_paragraph_'.$language['id_lang'].'" name="body_paragraph_'.$language['id_lang'].'">'.($xml ? stripslashes(htmlspecialchars($xml->body->{'paragraph_'.$language['id_lang']})) : '').'</textarea>
 					</div>';
 				 }
 				

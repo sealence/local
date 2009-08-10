@@ -93,7 +93,7 @@ if ($result == 'VERIFIED') {
 		elseif (Order::getOrderByCartId(intval($_POST['custom'])))
 			$errors = $paypal->getL('order').'<br />';
 		else
-			$paypal->validateOrder($_POST['custom'], _PS_OS_PAYMENT_, $_POST['mc_gross'], $paypal->displayName, $paypal->getL('transaction').$_POST['txn_id']);
+			$paypal->validateOrder($_POST['custom'], _PS_OS_PAYMENT_, floatval($_POST['mc_gross']), $paypal->displayName, $paypal->getL('transaction').$_POST['txn_id']);
 	}
 } else {
 	$errors .= $paypal->getL('verified');

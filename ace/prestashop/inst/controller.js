@@ -430,13 +430,6 @@ function verifyMail()
 				smtpIsOk = false;
 				return false;
 			}
-			
-			if($("#smtpLogin[value=]").length > 0)
-			{
-				$("#mailResultCheck").addClass("fail").removeClass("ok").removeClass('userInfos').html(txtSmtpLoginEmpty);
-				smtpIsOk = false;
-				return false;
-			}
 		}
 		
 		
@@ -591,21 +584,21 @@ function verifyShopInfos()
 	   data:
 		"method=checkShopInfos"+
 		"&isoCode="+isoCodeLocalLanguage+
-		"&infosShop="+ $("input#infosShop").val()+
-		"&infosFirstname="+ $("input#infosFirstname").val()+
-		"&infosName="+ $("input#infosName").val()+
-		"&infosEmail="+ $("input#infosEmail").val()+
-		"&infosPassword="+ $("input#infosPassword").val()+
-		"&infosPasswordRepeat="+ $("input#infosPasswordRepeat").val()+
+		"&infosShop="+ encodeURIComponent($("input#infosShop").val())+
+		"&infosFirstname="+ encodeURIComponent($("input#infosFirstname").val())+
+		"&infosName="+ encodeURIComponent($("input#infosName").val())+
+		"&infosEmail="+ encodeURIComponent($("input#infosEmail").val())+
+		"&infosPassword="+ encodeURIComponent($("input#infosPassword").val())+
+		"&infosPasswordRepeat="+ encodeURIComponent($("input#infosPasswordRepeat").val())+
 		"&infosNotification="+ ( ($("#infosNotification:checked").length > 0) ? "on" : "off" )+
 		urlLanguages+
 		"&infosMailMethod=" + ((smtpChecked) ? "smtp" : "native")+
-		"&smtpSrv="+ $("input#smtpSrv").val()+
-		"&smtpLogin="+ $("input#smtpLogin").val()+
-		"&smtpPassword="+ $("input#smtpPassword").val()+
-		"&smtpPort="+ $("input#smtpPort").val()+
-		"&smtpEnc="+ $("select#smtpEnc option:selected").val()+
-		"&mailSubject="+ mailSubject+
+		"&smtpSrv="+ encodeURIComponent($("input#smtpSrv").val())+
+		"&smtpLogin="+ encodeURIComponent($("input#smtpLogin").val())+
+		"&smtpPassword="+ encodeURIComponent($("input#smtpPassword").val())+
+		"&smtpPort="+ encodeURIComponent($("input#smtpPort").val())+
+		"&smtpEnc="+ encodeURIComponent($("select#smtpEnc option:selected").val())+
+		"&mailSubject="+ encodeURIComponent(mailSubject)+
 		"&isoCodeLocalLanguage="+isoCodeLocalLanguage
 	   ,
 	   
@@ -617,10 +610,11 @@ function verifyShopInfos()
 			else if (!ajaxRefreshField(1, "resultInfosFirstname", fieldsList, "infosFirstname")) validShopInfos = false;
 			else if (!ajaxRefreshField(2, "resultInfosName", fieldsList, "infosName")) validShopInfos = false;
 			else if (!ajaxRefreshField(3, "resultInfosEmail", fieldsList, "infosEmail")) validShopInfos = false;
-			else if (!ajaxRefreshField(4, "resultInfosPassword", fieldsList, "infosPassword")) validShopInfos = false;
-			else if (!ajaxRefreshField(5, "resultInfosLanguages", fieldsList, "infosLanguages")) validShopInfos = false;
-			else if (!ajaxRefreshField(6, "resultInfosSQL", fieldsList, "infosSQL")) validShopInfos = false;
-			else if (!ajaxRefreshField(7, "resultInfosNotification", fieldsList, "infosNotification")) validShopInfos = false;
+			else if (!ajaxRefreshField(7, "resultInfosPassword", fieldsList, "infosPassword")) validShopInfos = false;
+			else if (!ajaxRefreshField(8, "resultInfosPasswordRepeat", fieldsList, "infosPasswordRepeat")) validShopInfos = false;
+			else if (!ajaxRefreshField(9, "resultInfosLanguages", fieldsList, "infosLanguages")) validShopInfos = false;
+			else if (!ajaxRefreshField(11, "resultInfosSQL", fieldsList, "infosSQL")) validShopInfos = false;
+			else if (!ajaxRefreshField(10, "resultInfosNotification", fieldsList, "infosNotification")) validShopInfos = false;
 			else
 			{
 				$('#endShopName').html($('input#infosShop').val());

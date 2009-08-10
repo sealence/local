@@ -4,10 +4,10 @@
   * Statistics
   * @category stats
   *
-  * @author John Thiriet / Epitech
+  * @author Damien Metzger / Epitech
   * @copyright Epitech / PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   */
   
 class StatsBestCategories extends ModuleGrid
@@ -24,7 +24,6 @@ class StatsBestCategories extends ModuleGrid
 		$this->name = 'statsbestcategories';
 		$this->tab = 'Stats';
 		$this->version = 1.0;
-		$this->page = basename(__FILE__, '.php');
 		
 		$this->_defaultSortColumn = 'totalPriceSold';
 		$this->_emptyMessage = $this->l('Empty recordset returned');
@@ -36,13 +35,13 @@ class StatsBestCategories extends ModuleGrid
 				'header' => $this->l('Name'),
 				'dataIndex' => 'name',
 				'align' => 'left',
-				'width' => 300
+				'width' => 400
 			),
 			array(
 				'id' => 'totalQuantitySold',
 				'header' => $this->l('Total Quantity Sold'),
 				'dataIndex' => 'totalQuantitySold',
-				'width' => 30,
+				'width' => 20,
 				'align' => 'right'
 			),
 			array(
@@ -92,72 +91,54 @@ class StatsBestCategories extends ModuleGrid
 	
 	public function getTotalCount()
 	{
-		$result = Db::getInstance()->GetRow('SELECT COUNT(p.`id_category`) totalCount FROM `'._DB_PREFIX_.'category` p');
-		return $result['totalCount'];
+		return Db::getInstance()->getValue('SELECT COUNT(c.`id_category`) FROM `'._DB_PREFIX_.'category` c');
 	}
-	
-	public function setOption($option)
-	{
-	}
-	
+		
 	public function getData()
 	{
-		global $cookie;
-		$id_lang = (isset($cookie->id_lang) ? intval($cookie->id_lang) : Configuration::get('PS_LANG_DEFAULT'));
+		$dateBetween = $this->getDate();
+		$id_lang = intval($this->getLang());
 	
 		$this->_totalCount = $this->getTotalCount();
 
-$this->_query = 'SELECT
-	ca.`id_category`,
-	calang.`name`,
-	IFNULL(SUM(t.`totalQuantitySold`), 0) AS totalQuantitySold,
-	IFNULL(SUM(t.`totalPriceSold`), 0) AS totalPriceSold,
-	(
-		SELECT IFNULL(SUM(pv.`counter`), 0)
-		FROM `'._DB_PREFIX_.'page` p
-		LEFT JOIN `'._DB_PREFIX_.'page_viewed` pv ON p.`id_page` = pv.`id_page`
-		LEFT JOIN `'._DB_PREFIX_.'product` pr ON CAST(p.`id_object` AS UNSIGNED INTEGER) = pr.`id_product`
-		LEFT JOIN `'._DB_PREFIX_.'category_product` capr2 ON capr2.`id_product` = pr.`id_product`
-		WHERE
-		capr.`id_category` = capr2.`id_category`
-		AND p.`id_page_type` = 1
-	) AS totalPageViewed
-FROM `'._DB_PREFIX_.'category` ca
-LEFT JOIN `'._DB_PREFIX_.'category_lang` calang ON ca.`id_category` = calang.`id_category`
-LEFT JOIN `'._DB_PREFIX_.'category_product` capr ON ca.`id_category` = capr.`id_category`
-LEFT JOIN
-(
-	SELECT
-	pr.`id_product`,
-	t.`totalQuantitySold`,
-	t.`totalPriceSold`
-	FROM `'._DB_PREFIX_.'product` pr
-	LEFT JOIN
-	(
-		SELECT
-		pr.`id_product`,
-		IFNULL(SUM(cp.`product_quantity`), 0) AS totalQuantitySold,
-		IFNULL(SUM(pr.`price` * cp.`product_quantity`), 0) AS totalPriceSold
-		FROM `'._DB_PREFIX_.'product` pr
-		LEFT OUTER JOIN `'._DB_PREFIX_.'order_detail` cp ON pr.`id_product` = cp.`product_id`
-		WHERE
-		(
-			SELECT
-			os.`invoice`
-			FROM `'._DB_PREFIX_.'order_history` oh
-			LEFT JOIN `'._DB_PREFIX_.'order_state` os ON os.`id_order_state` = oh.`id_order_state`
-			WHERE cp.`id_order` = oh.`id_order`
-			ORDER BY oh.`date_add` DESC, oh.`id_order_history` DESC
-			LIMIT 1
-		) = 1
-		GROUP BY pr.`id_product`
-	) t
-	ON t.`id_product` = pr.`id_product`
-) t
-ON t.`id_product` = capr.`id_product`
-WHERE calang.`id_lang` = '.$id_lang.'
-GROUP BY ca.`id_category`
-HAVING ca.`id_category` <> 1';
+		$this->_query = '
+		SELECT ca.`id_category`, CONCAT(parent.name, \' > \', calang.`name`) as name,
+			IFNULL(SUM(t.`totalQuantitySold`), 0) AS totalQuantitySold,
+			ROUND(IFNULL(SUM(t.`totalPriceSold`), 0), 2) AS totalPriceSold,
+			(
+				SELECT IFNULL(SUM(pv.`counter`), 0)
+				FROM `'._DB_PREFIX_.'page` p
+				LEFT JOIN `'._DB_PREFIX_.'page_viewed` pv ON p.`id_page` = pv.`id_page`
+				LEFT JOIN `'._DB_PREFIX_.'date_range` dr ON pv.`id_date_range` = dr.`id_date_range`
+				LEFT JOIN `'._DB_PREFIX_.'product` pr ON CAST(p.`id_object` AS UNSIGNED INTEGER) = pr.`id_product`
+				LEFT JOIN `'._DB_PREFIX_.'category_product` capr2 ON capr2.`id_product` = pr.`id_product`
+				WHERE capr.`id_category` = capr2.`id_category`
+				AND p.`id_page_type` = 1
+				AND dr.`time_start` BETWEEN '.$dateBetween.'
+				AND dr.`time_end` BETWEEN '.$dateBetween.'
+			) AS totalPageViewed
+		FROM `'._DB_PREFIX_.'category` ca
+		LEFT JOIN `'._DB_PREFIX_.'category_lang` calang ON (ca.`id_category` = calang.`id_category` AND calang.`id_lang` = '.$id_lang.')
+		LEFT JOIN `'._DB_PREFIX_.'category_lang` parent ON (ca.`id_parent` = parent.`id_category` AND parent.`id_lang` = '.$id_lang.')
+		LEFT JOIN `'._DB_PREFIX_.'category_product` capr ON ca.`id_category` = capr.`id_category`
+		LEFT JOIN (
+			SELECT pr.`id_product`, t.`totalQuantitySold`, t.`totalPriceSold`
+			FROM `'._DB_PREFIX_.'product` pr
+			LEFT JOIN (
+				SELECT pr.`id_product`,
+					IFNULL(SUM(cp.`product_quantity`), 0) AS totalQuantitySold,
+					IFNULL(SUM(pr.`price` * cp.`product_quantity`), 0) / c.conversion_rate AS totalPriceSold
+				FROM `'._DB_PREFIX_.'product` pr
+				LEFT OUTER JOIN `'._DB_PREFIX_.'order_detail` cp ON pr.`id_product` = cp.`product_id`
+				LEFT JOIN `'._DB_PREFIX_.'orders` o ON o.`id_order` = cp.`id_order`
+				LEFT JOIN `'._DB_PREFIX_.'currency` c ON o.id_currency = c.id_currency
+				WHERE o.valid = 1
+				AND o.invoice_date BETWEEN '.$dateBetween.'
+				GROUP BY pr.`id_product`
+			) t ON t.`id_product` = pr.`id_product`
+		) t	ON t.`id_product` = capr.`id_product`
+		GROUP BY ca.`id_category`
+		HAVING ca.`id_category` != 1';
 		if (Validate::IsName($this->_sort))
 		{
 			$this->_query .= ' ORDER BY `'.$this->_sort.'`';

@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -33,8 +33,8 @@ class		State extends ObjectModel
 	public		$active = true;
 
  	protected 	$fieldsRequired = array('id_country', 'id_zone', 'iso_code', 'name', 'tax_behavior');
- 	protected 	$fieldsSize = array('iso_code' => 3, 'name' => 32);
- 	protected 	$fieldsValidate = array('id_country' => 'isUnsignedId', 'id_zone' => 'isUnsignedId', 'iso_code' => 'isLanguageIsoCode', 'name' => 'isGenericName', 'tax_behavior' => 'isUnsignedInt', 'active' => 'isBool');
+ 	protected 	$fieldsSize = array('iso_code' => 4, 'name' => 32);
+ 	protected 	$fieldsValidate = array('id_country' => 'isUnsignedId', 'id_zone' => 'isUnsignedId', 'iso_code' => 'isStateIsoCode', 'name' => 'isGenericName', 'tax_behavior' => 'isUnsignedInt', 'active' => 'isBool');
 
 	protected 	$table = 'state';
 	protected 	$identifier = 'id_state';

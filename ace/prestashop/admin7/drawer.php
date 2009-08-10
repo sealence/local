@@ -7,13 +7,20 @@ $module = Tools::getValue('module');
 $render = Tools::getValue('render');
 $type = Tools::getValue('type');
 $option = Tools::getValue('option');
+$layers = Tools::getValue('layers');
 $width = Tools::getValue('width');
 $height = Tools::getValue('height');
+$id_employee = Tools::getValue('id_employee');
+$id_lang = Tools::getValue('id_lang');
 
 require_once(dirname(__FILE__).'/../modules/'.$module.'/'.$module.'.php');
+
 $graph = new $module();
-if ($option) $graph->setOption($option);
-$graph->create($render, $type, $width, $height);
+$graph->setEmployee($id_employee);
+$graph->setLang($id_lang);
+if ($option) $graph->setOption($option, $layers);
+
+$graph->create($render, $type, $width, $height, $layers);
 $graph->draw();
 
 ?>

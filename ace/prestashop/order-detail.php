@@ -86,7 +86,7 @@ else
 			'order_state' => intval($id_order_state),
 			'invoiceAllowed' => intval(Configuration::get('PS_INVOICE')),
 			'invoice' => (OrderState::invoiceAvailable(intval($id_order_state)) OR $order->invoice_number),
-			'order_history' => $order->getHistory(intval($cookie->id_lang)),
+			'order_history' => $order->getHistory(intval($cookie->id_lang), false, true),
 			'products' => $products,
 			'discounts' => $order->getDiscounts(),
 			'carrier' => $carrier,
@@ -94,7 +94,7 @@ else
 			'invoiceState' => (Validate::isLoadedObject($addressInvoice) AND $addressInvoice->id_state) ? new State(intval($addressInvoice->id_state)) : false,
 			'address_delivery' => $addressDelivery,
 			'deliveryState' => (Validate::isLoadedObject($addressDelivery) AND $addressDelivery->id_state) ? new State(intval($addressDelivery->id_state)) : false,
-			'messages' => Message::getMessagesByOrderId(intval($order->id), true),
+			'messages' => Message::getMessagesByOrderId(intval($order->id)),
 			'CUSTOMIZE_FILE' => _CUSTOMIZE_FILE_,
 			'CUSTOMIZE_TEXTFIELD' => _CUSTOMIZE_TEXTFIELD_,
 			'customizedDatas' => $customizedDatas));
@@ -102,9 +102,7 @@ else
 			$smarty->assign('followup', str_replace('@', $order->shipping_number, $carrier->url));
 	}
 	else
-	{
 		$errors[] = Tools::displayError('cannot find this order');
-	}
 }
 
 $smarty->assign('errors', $errors);

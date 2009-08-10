@@ -7,7 +7,7 @@
   * @author Damien Metzger / Epitech
   * @copyright Epitech / PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   */
   
 class StatsData extends Module
@@ -19,7 +19,6 @@ class StatsData extends Module
         $this->name = 'statsdata';
         $this->tab = 'Stats';
         $this->version = 1.0;
-		$this->page = basename(__FILE__, '.php');
 
         parent::__construct();
 		
@@ -36,6 +35,8 @@ class StatsData extends Module
     
 	function hookFooter($params)
 	{
+		global $protocol_content, $server_host;
+
 		// Identification information are encrypted to prevent hacking attempts
 		$blowfish = new Blowfish(_COOKIE_KEY_, _COOKIE_IV_);
 		if (!isset($params['cookie']->id_guest))
@@ -45,7 +46,7 @@ class StatsData extends Module
 			// Ajax request sending browser information
 			$token = $blowfish->encrypt($params['cookie']->id_guest);
 			$this->_html = '
-			<script type="text/javascript" src="'.__PS_BASE_URI__.'js/pluginDetect.js"></script>
+			<script type="text/javascript" src="'.$protocol_content.$server_host.__PS_BASE_URI__.'js/pluginDetect.js"></script>
 			<script type="text/javascript">
 				plugins = new Object;
 				
@@ -64,7 +65,7 @@ class StatsData extends Module
 							navinfo[i] = plugins[i];
 						navinfo.type = "navinfo";
 						navinfo.token = "'.$token.'";
-						$.post("'.__PS_BASE_URI__.'statistics.php", navinfo);
+						$.post("'.$protocol_content.$server_host.__PS_BASE_URI__.'statistics.php", navinfo);
 					}
 				);
 			</script>';
@@ -72,6 +73,7 @@ class StatsData extends Module
 		
 		// Record the guest path then increment the visit counter of the page
 		$tokenArray = Connection::setPageConnection($params['cookie']);
+		ConnectionsSource::logHttpReferer();
 		Page::setPageViewed($tokenArray['id_page']);
 		
 		// Ajax request sending the time spend on the page
@@ -91,7 +93,7 @@ class StatsData extends Module
 					pagetime.type = "pagetime";
 					pagetime.token = "'.$token.'";
 					pagetime.time = time_end-time_start;
-					$.post("'.__PS_BASE_URI__.'statistics.php", pagetime);
+					$.post("'.$protocol_content.$server_host.__PS_BASE_URI__.'statistics.php", pagetime);
 				}
 			);
 		</script>';

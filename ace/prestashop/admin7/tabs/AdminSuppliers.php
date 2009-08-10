@@ -7,7 +7,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -57,7 +57,7 @@ class AdminSuppliers extends AdminTab
 				echo '
 				<table border="0" cellpadding="0" cellspacing="0" class="table width3">
 					<tr>
-						<th>'.$product->name.'</th>
+						<th><a href="index.php?tab=AdminCatalog&id_product='.$product->id.'&addproduct&token='.Tools::getAdminToken('AdminCatalog'.intval(Tab::getIdFromClassName('AdminCatalog')).intval($cookie->id_employee)).'" target="_blank">'.$product->name.'</a></th>
 						'.(!empty($product->reference) ? '<th width="150">'.$this->l('Ref:').' '.$product->reference.'</th>' : '').'
 						'.(!empty($product->ean13) ? '<th width="120">'.$this->l('EAN13:').' '.$product->ean13.'</th>' : '').'
 						'.(Configuration::get('PS_STOCK_MANAGEMENT') ? '<th class="right" width="50">'.$this->l('Qty:').' '.$product->quantity.'</th>' : '').'
@@ -67,7 +67,7 @@ class AdminSuppliers extends AdminTab
 			else
 			{
 				echo '
-				<h3>'.$product->name.'</h3>
+				<h3><a href="index.php?tab=AdminCatalog&id_product='.$product->id.'&addproduct&token='.Tools::getAdminToken('AdminCatalog'.intval(Tab::getIdFromClassName('AdminCatalog')).intval($cookie->id_employee)).'" target="_blank">'.$product->name.'</a></h3>
 				<table>
 					<tr>
 						<td colspan="2">
@@ -111,13 +111,14 @@ class AdminSuppliers extends AdminTab
 	
 	public function displayForm()
 	{
-		global $currentIndex;
+				global $currentIndex;
 		
 		$supplier = $this->loadObject(true);
 		$this->displayImage($supplier->id, _PS_SUPP_IMG_DIR_.$supplier->id.'.jpg', 350);
 		$defaultLanguage = intval(Configuration::get('PS_LANG_DEFAULT'));
 		$languages = Language::getLanguages();
 
+		$langtags = 'description¤smeta_title¤smeta_keywords¤smeta_description';
 		echo '
 		<script type="text/javascript">
 			id_language = Number('.$defaultLanguage.');
@@ -139,12 +140,44 @@ class AdminSuppliers extends AdminTab
 						<span class="hint" name="help_box">'.$this->l('Invalid characters:').' <>;=#{}<span class="hint-pointer">&nbsp;</span></span>
 						<p style="clear: both;">'.$this->l('Will appear in supplier list').'</p>
 					</div>';							
-				$this->displayFlags($languages, $defaultLanguage, 'description', 'description');
+				$this->displayFlags($languages, $defaultLanguage, $langtags, 'description');
 		echo '	</div>
 				<label>'.$this->l('Logo:').' </label>
 				<div class="margin-form">
 					<input type="file" name="logo" />
 					<p>'.$this->l('Upload supplier logo from your computer').'</p>
+				</div>
+				<label>'.$this->l('Meta title:').' </label>
+				<div class="margin-form">';
+		foreach ($languages as $language)
+			echo '
+					<div id="smeta_title_'.$language['id_lang'].'" style="display: '.($language['id_lang'] == $defaultLanguage ? 'block' : 'none').'; float: left;">
+						<input type="text" name="meta_title_'.$language['id_lang'].'" id="meta_title_'.$language['id_lang'].'" value="'.htmlentities($this->getFieldValue($supplier, 'meta_title', intval($language['id_lang'])), ENT_COMPAT, 'UTF-8').'" />
+						<span class="hint" name="help_box">'.$this->l('Forbidden characters:').' <>;=#{}<span class="hint-pointer">&nbsp;</span></span>
+					</div>';
+		$this->displayFlags($languages, $defaultLanguage, $langtags, 'smeta_title');
+		echo '		<div class="clear"></div>
+				</div>
+				<label>'.$this->l('Meta description:').' </label>
+				<div class="margin-form">';
+		foreach ($languages as $language)
+			echo '<div id="smeta_description_'.$language['id_lang'].'" style="display: '.($language['id_lang'] == $defaultLanguage ? 'block' : 'none').'; float: left;">
+						<input type="text" name="meta_description_'.$language['id_lang'].'" id="meta_description_'.$language['id_lang'].'" value="'.htmlentities($this->getFieldValue($supplier, 'meta_description', intval($language['id_lang'])), ENT_COMPAT, 'UTF-8').'" />
+						<span class="hint" name="help_box">'.$this->l('Forbidden characters:').' <>;=#{}<span class="hint-pointer">&nbsp;</span></span>
+				</div>';
+		$this->displayFlags($languages, $defaultLanguage, $langtags, 'smeta_description');
+		echo '		<div class="clear"></div>
+				</div>
+				<label>'.$this->l('Meta keywords:').' </label>
+				<div class="margin-form">';
+		foreach ($languages as $language)
+			echo '
+					<div id="smeta_keywords_'.$language['id_lang'].'" style="display: '.($language['id_lang'] == $defaultLanguage ? 'block' : 'none').'; float: left;">
+						<input type="text" name="meta_keywords_'.$language['id_lang'].'" id="meta_keywords_'.$language['id_lang'].'" value="'.htmlentities($this->getFieldValue($supplier, 'meta_keywords', intval($language['id_lang'])), ENT_COMPAT, 'UTF-8').'" />
+						<span class="hint" name="help_box">'.$this->l('Forbidden characters:').' <>;=#{}<span class="hint-pointer">&nbsp;</span></span>
+					</div>';
+		$this->displayFlags($languages, $defaultLanguage, $langtags, 'smeta_keywords');
+		echo '		<div class="clear"></div>
 				</div>
 				<div class="margin-form">
 					<input type="submit" value="'.$this->l('   Save   ').'" name="submitAdd'.$this->table.'" class="button" />
@@ -159,13 +192,12 @@ class AdminSuppliers extends AdminTab
 		global $currentIndex;
 		
 		/* Generate image with differents size */
-		if (($id_supplier = intval(Tools::getValue('id_supplier'))) AND isset($_FILES) AND file_exists(_PS_SUPP_IMG_DIR_.$id_supplier.'.jpg'))
+		if (($id_supplier = intval(Tools::getValue('id_supplier'))) AND isset($_FILES) AND count($_FILES) AND file_exists(_PS_SUPP_IMG_DIR_.$id_supplier.'.jpg'))
 		{
 			$imagesTypes = ImageType::getImagesTypes('suppliers');
 			foreach ($imagesTypes AS $k => $imageType)
 			{
-				$file['tmp_name'] = _PS_SUPP_IMG_DIR_.$id_supplier.'.jpg';
-				$file['type'] = 'image/jpg';
+				$file = _PS_SUPP_IMG_DIR_.$id_supplier.'.jpg';
 				imageResize($file, _PS_SUPP_IMG_DIR_.$id_supplier.'-'.stripslashes($imageType['name']).'.jpg', intval($imageType['width']), intval($imageType['height']));
 			}
 		}

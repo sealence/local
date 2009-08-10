@@ -26,9 +26,8 @@ class BankWire extends PaymentModule
 		if (isset($config['BANK_WIRE_ADDRESS']))
 			$this->address = $config['BANK_WIRE_ADDRESS'];
 
-		parent::__construct(); /* The parent construct is required for translations */
+		parent::__construct();
 
-		$this->page = basename(__FILE__, '.php');
 		$this->displayName = $this->l('Bank Wire');
 		$this->description = $this->l('Accept payments by bank wire');
 		$this->confirmUninstall = $this->l('Are you sure you want to delete your details?');
@@ -134,6 +133,9 @@ class BankWire extends PaymentModule
 
 	public function execPayment($cart)
 	{
+		if (!$this->active)
+			return ;
+
 		global $cookie, $smarty;
 
 		$smarty->assign(array(
@@ -154,6 +156,9 @@ class BankWire extends PaymentModule
 
 	public function hookPayment($params)
 	{
+		if (!$this->active)
+			return ;
+
 		global $smarty;
 
 		$smarty->assign(array(
@@ -165,6 +170,9 @@ class BankWire extends PaymentModule
 
 	public function hookPaymentReturn($params)
 	{
+		if (!$this->active)
+			return ;
+
 		global $smarty;
 		$state = $params['objOrder']->getCurrentState();
 		if ($state == _PS_OS_BANKWIRE_ OR $state == _PS_OS_OUTOFSTOCK_)
@@ -180,7 +188,4 @@ class BankWire extends PaymentModule
 			$smarty->assign('status', 'failed');
 		return $this->display(__FILE__, 'payment_return.tpl');
 	}
-
 }
-
-?>

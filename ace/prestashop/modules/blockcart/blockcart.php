@@ -13,8 +13,6 @@ class BlockCart extends Module
 
 		parent::__construct();
 
-		/* The parent construct is required for translations */
-			$this->page = basename(__FILE__, '.php');
 		$this->displayName = $this->l('Cart block');
 		$this->description = $this->l('Adds a block containing the customer\'s shopping cart');
 	}
@@ -31,18 +29,22 @@ class BlockCart extends Module
 		if (!Validate::isLoadedObject($currency))
 			$currency = new Currency(intval(Configuration::get('PS_DEFAULT_CURRENCY')));
 
+		$products = $params['cart']->getProducts(true);
+		foreach ($products as $k => $product)
+			$products[$k]['real_price'] = Product::getPriceStatic($product['id_product'], intval(Configuration::get('PS_PRICE_DISPLAY')) == 1 ? false : true, $product['id_product_attribute'], 6, NULL, false, true, $product['cart_quantity']) * $product['cart_quantity'];
+
 		$smarty->assign(array(
-			'products'=> $params['cart']->getProducts(true),
+			'products'=> $products,
 			'customizedDatas' => Product::getAllCustomizedDatas(intval($params['cart']->id)),
 			'CUSTOMIZE_FILE' => _CUSTOMIZE_FILE_,
 			'CUSTOMIZE_TEXTFIELD' => _CUSTOMIZE_TEXTFIELD_,
-			'discounts' => $params['cart']->getDiscounts(),
+			'discounts' => $params['cart']->getDiscounts(false, true),
 			'nb_total_products' =>$params['cart']->nbProducts(),
-			'shipping_cost' => Tools::displayPrice($params['cart']->getOrderTotal(true, 5), $currency),
+			'shipping_cost' => Tools::displayPrice($params['cart']->getOrderTotal(intval(Configuration::get('PS_PRICE_DISPLAY')) == 1 ? false : true, 5), $currency),
 			'show_wrapping' => floatval($params['cart']->getOrderTotal(true, 6)) > 0 ? true : false,
-			'wrapping_cost' => Tools::displayPrice($params['cart']->getOrderTotal(true, 6), $currency),
-			'product_total' => Tools::displayPrice($params['cart']->getOrderTotal(true, 4), $currency),
-			'total' => Tools::displayPrice($params['cart']->getOrderTotal(), $currency),
+			'wrapping_cost' => Tools::displayPrice($params['cart']->getOrderTotal(intval(Configuration::get('PS_PRICE_DISPLAY')) == 1 ? false : true, 6), $currency),
+			'product_total' => Tools::displayPrice($params['cart']->getOrderTotal(intval(Configuration::get('PS_PRICE_DISPLAY')) == 1 ? false : true, 4), $currency),
+			'total' => Tools::displayPrice($params['cart']->getOrderTotal(intval(Configuration::get('PS_PRICE_DISPLAY')) == 1 ? false : true), $currency),
 			'id_carrier' => $params['cart']->id_carrier,
 			'ajax_allowed' => intval(Configuration::get('PS_BLOCK_CART_AJAX')) == 1 ? true : false
 		));

@@ -8,17 +8,15 @@ class BlockMyAccount extends Module
 		$this->tab = 'Blocks';
 		$this->version = '1.2';
 
-		/* The parent construct is required for translations */
 		parent::__construct();
 
-		$this->page = basename(__FILE__, '.php');
 		$this->displayName = $this->l('My Account block');
 		$this->description = $this->l('Displays a block with links relative to user account');
 	}
 
 	public function install()
 	{
-		if (!$this->addMyAccountBlockHook() OR !parent::install() OR !$this->registerHook('rightColumn'))
+		if (!$this->addMyAccountBlockHook() OR !parent::install() OR !$this->registerHook('leftColumn'))
 			return false;
 		return true;
 	}

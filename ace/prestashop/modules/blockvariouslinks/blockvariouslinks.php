@@ -9,9 +9,8 @@ class BlockVariousLinks extends Module
 		$this->tab = 'Blocks';
 		$this->version = 0.1;
 
-		parent::__construct(); // The parent construct is required for translations
-
-		$this->page = basename(__FILE__, '.php');
+		parent::__construct();
+		
 		$this->displayName = $this->l('Footer links block');
 		$this->description = $this->l('Displays miscellaneous links (generally in footer)');
 	}
@@ -36,14 +35,14 @@ class BlockVariousLinks extends Module
 	
    public function getContent()
    {
-		if(isset($_POST['btnSubmit']))
+		if (isset($_POST['btnSubmit']))
 			$this->_postProcess();
-			    	
     $this-> _displayForm();
     return $this->_html;
    }
     
-	private function _displayForm()	{
+	private function _displayForm()
+	{
 		global $cookie;
 
 		$this->_html .=
@@ -74,16 +73,17 @@ class BlockVariousLinks extends Module
 	}
 
 	private function _postProcess()
-	{	
-		if(isset($_POST['categoryBox']) AND is_array($_POST['categoryBox']) AND count($_POST['categoryBox'] >= 1))
+	{
+		if (isset($_POST['categoryBox']) AND is_array($_POST['categoryBox']) AND count($_POST['categoryBox'] >= 1))
 		{
-			foreach($_POST['categoryBox'] AS $row)
+			foreach ($_POST['categoryBox'] AS $row)
 				$cms[] = intval($row);
-
-			if(CMS::updateCmsToBlock($cms, $this->id))
+			if (CMS::updateCmsToBlock($cms, $this->id))
 		 		$this->_html .= '<div class="conf confirm">'.$this->l('Cms Updated').'</div>';
 		 }
-	}	
+		else
+		 	CMS::updateCmsToBlock(array(), $this->id);
+	}
 
 	/**
 	* Returns module content

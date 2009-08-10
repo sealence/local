@@ -10,8 +10,6 @@ class BlockLanguages extends Module
 
 		parent::__construct();
 
-		/* The parent construct is required for translations */
-		$this->page = basename(__FILE__, '.php');
 		$this->displayName = $this->l('Language block');
 		$this->description = $this->l('Adds a block for selecting a language');
 	}
@@ -36,9 +34,9 @@ class BlockLanguages extends Module
 		global $smarty;
 		$languages = Language::getLanguages();
 		if (!sizeof($languages))
-      return '';
+			return '';
 		$smarty->assign('languages', $languages);
-    return $this->display(__FILE__, 'blocklanguages.tpl');
+		return $this->display(__FILE__, 'blocklanguages.tpl');
 	}
 
 }

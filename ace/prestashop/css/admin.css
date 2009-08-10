@@ -187,12 +187,11 @@ label {
 }
 
 #preview_import label {
-	float: left;
-	width: 340px;
-	padding: 0.2em 0 0 0;
-	text-align: left;
-	font-weight: bold;
-	white-space: nowrap;
+	float:left;
+	font-weight:bold;
+	padding:0.2em 0 0;
+	text-align:left;
+	width:270px;
 }
 
 label.t {
@@ -656,7 +655,7 @@ tr.deleted td {
 }
 
 .space {
-	margin-top: 1em;
+	margin-top: 13px;
 }
 
 .pspace {
@@ -741,6 +740,11 @@ tr.deleted td {
  	color: forestgreen;
 }
 
+.bullet {
+	display: list-item;
+	list-style: disc;
+	margin-left: 30px; 
+}
 
 /* access management */
 #ajax_confirmation {
@@ -855,4 +859,14 @@ form#import_form {
 	width:900px;
 	height:500px;
 	overflow:auto;
+}
+
+.new_message{
+	background-color:#FFE35C;
+}
+.myDragClass {
+	background-color: #FFAA55;
+}
+.dragHandle{
+cursor: move;
 }

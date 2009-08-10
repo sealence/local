@@ -29,7 +29,6 @@ class GridExtJS extends ModuleGridEngine
 			$this->name = 'gridextjs';
 			$this->tab = 'Stats Engines';
 			$this->version = 1.0;
-			$this->page = basename(__FILE__, '.php');
 			
 			Module::__construct();
 			
@@ -86,7 +85,7 @@ var cm = new Ext.grid.ColumnModel([';
 			{
 				if ($i++ > 0)
 					$html .= ',';
-				$html .= $key.':"'.$value.'"';
+				$html .= $key.':'.(is_int($value) ? $value : '"'.$value.'"');
 			}
 			$html .= '}';
 		}

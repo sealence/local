@@ -22,16 +22,15 @@ $_MODULE['<{bankwire}prestashop>bankwire_6b154cafbab54ba3a1e76a78c290c02a'] = 'C
 $_MODULE['<{bankwire}prestashop>bankwire_f9a1a1bb716cbae0503d351ea2af4b34'] = 'Adresse de la banque';
 $_MODULE['<{bankwire}prestashop>bankwire_b17f3f4dcf653a5776792498a9b44d6a'] = 'Mettre à jour';
 $_MODULE['<{bankwire}prestashop>payment_5e1695822fc5af98f6b749ea3cbc9b4c'] = 'Payer par virement bancaire';
-$_MODULE['<{bankwire}prestashop>payment_5e1695822fc5af98f6b749ea3cbc9b4c'] = 'Payer par virement bancaire';
 $_MODULE['<{bankwire}prestashop>payment_eb1d50032721fa4c9d3518c417f91b9d'] = 'Payer par virement bancaire (traitement plus long)';
 $_MODULE['<{bankwire}prestashop>payment_execution_c5e8668ba5e211603955f0b5e913d83d'] = 'Paiement par virement bancaire';
 $_MODULE['<{bankwire}prestashop>payment_execution_f1d3b424cd68795ecaa552883759aceb'] = 'Récapitulatif de commande';
 $_MODULE['<{bankwire}prestashop>payment_execution_879f6b8877752685a966564d072f498f'] = 'Votre panier est vide.';
-$_MODULE['<{bankwire}prestashop>payment_execution_c5e8668ba5e211603955f0b5e913d83d'] = 'Paiement par virement bancaire';
 $_MODULE['<{bankwire}prestashop>payment_execution_e40a43534d7f4ece69347847d75401e0'] = 'virement bancaire';
 $_MODULE['<{bankwire}prestashop>payment_execution_afda466128ee0594745d9f8152699b74'] = 'Vous avez choisi de régler par virement bancaire.';
 $_MODULE['<{bankwire}prestashop>payment_execution_c884ed19483d45970c5bf23a681e2dd2'] = 'Voici un bref récapitulatif de votre commande :';
 $_MODULE['<{bankwire}prestashop>payment_execution_e2867a925cba382f1436d1834bb52a1c'] = 'Le montant total de votre commande s\'élève à';
+$_MODULE['<{bankwire}prestashop>payment_execution_1f87346a16cf80c372065de3c54c86d9'] = 'TTC';
 $_MODULE['<{bankwire}prestashop>payment_execution_e2c147f82d998eeeb147ae172a31a88e'] = 'Nous acceptons plusieurs devises pour votre virement.';
 $_MODULE['<{bankwire}prestashop>payment_execution_a7a08622ee5c8019b57354b99b7693b2'] = 'Merci de choisir parmi les suivantes :';
 $_MODULE['<{bankwire}prestashop>payment_execution_2c1ce705702e11fd5e2188c2353c0c86'] = 'Nous acceptons la devise suivante pour votre paiement :';
@@ -53,6 +52,3 @@ $_MODULE['<{bankwire}prestashop>payment_return_c4457a9f2f20e39386008bbb2cd3a78f'
 $_MODULE['<{bankwire}prestashop>payment_return_0db71da7150c27142eef9d22b843b4a9'] = 'Pour toute question ou information complémentaire merci de contacter notre';
 $_MODULE['<{bankwire}prestashop>payment_return_64430ad2835be8ad60c59e7d44e4b0b1'] = 'support client';
 $_MODULE['<{bankwire}prestashop>payment_return_8de637e24570c1edb0357826a2ad5aea'] = 'Nous avons rencontré un problème avec votre commande. Merci de prendre contact avec notre support client';
-$_MODULE['<{bankwire}prestashop>payment_return_64430ad2835be8ad60c59e7d44e4b0b1'] = 'support client';
-
-?>

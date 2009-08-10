@@ -7,7 +7,7 @@
   * @author Damien Metzger / Epitech
   * @copyright Epitech / PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   */
   
 class BirthdayPresent extends Module
@@ -19,7 +19,6 @@ class BirthdayPresent extends Module
         $this->name = 'birthdaypresent';
         $this->tab = 'Tools';
         $this->version = 1.0;
-		$this->page = basename(__FILE__, '.php');
 		
 		parent::__construct();
 		
@@ -99,16 +98,9 @@ class BirthdayPresent extends Module
 		SELECT DISTINCT c.id_customer, firstname, lastname, email
 		FROM '._DB_PREFIX_.'customer c
 		LEFT JOIN '._DB_PREFIX_.'orders o ON c.id_customer = o.id_customer
-		WHERE (
-				SELECT os.`invoice`
-				FROM `'._DB_PREFIX_.'orders` oo
-				LEFT JOIN `'._DB_PREFIX_.'order_history` oh ON oh.`id_order` = oo.`id_order`
-				LEFT JOIN `'._DB_PREFIX_.'order_state` os ON os.`id_order_state` = oh.`id_order_state`
-				WHERE oo.`id_order` = o.`id_order`
-				ORDER BY oh.`date_add` DESC, oh.`id_order_history` DESC
-				LIMIT 1
-			) = 1
+		WHERE o.valid = 1
 		AND c.birthday LIKE \'%'.date('-m-d').'\'');
+
 		foreach ($users as $user)
 		{
 			$voucher = new Discount();
@@ -127,6 +119,8 @@ class BirthdayPresent extends Module
 			$voucher->active = true;
 			if ($voucher->add())
 				Mail::Send(intval(Configuration::get('PS_LANG_DEFAULT')), 'birthday', $this->l('Happy birthday!'), array('{firstname}' => $user['firstname'], '{lastname}' => $user['lastname']), $user['email'], NULL, strval(Configuration::get('PS_SHOP_EMAIL')), strval(Configuration::get('PS_SHOP_NAME')), NULL, NULL, dirname(__FILE__).'/mails/');
+			else
+				echo Db::getInstance()->getMsgError();
 		}
 	}
 }

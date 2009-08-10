@@ -7,7 +7,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -243,69 +243,64 @@ class AdminDiscounts extends AdminTab
 					</p>
 				</div>
 				<label>'.$this->l('To be used by:').' </label>
-				<div class="margin-form">				
+								<div class="margin-form">				
 					<select name="id_customer" id="id_customer">
 						<option value="0">-- '.$this->l('All customers').' --</option>
-					</select><br />'.$this->l('Filter:').' <input type="text" size="25" name="filter" onkeyup="fillCustomers(0);" class="space" />
+					</select><br />'.$this->l('Filter:').' <input type="text" size="25" name="filter" id="filter" onkeyup="fillCustomersAjax();" class="space" value="" />
 					<script type="text/javascript">
-					
-						function fillCustomers(defaultValue)
+						var formDiscount = document.layers ? document.forms.discount : document.discount;	
+						function fillCustomersAjax()
 						{
-							var formDiscount;
-							var customers = new Array();
-							var i;
-							var j;';
+							var filterValue = \''.(($value = intval($this->getFieldValue($obj, 'id_customer'))) ? $value : '').'\';
+							if ($(\'#filter\').val())
+								filterValue = $(\'#filter\').val();
 							
-							$customers = Customer::getCustomers();
-
-							$i = 1;
-							foreach ($customers AS $customer)
-							{
-								if ($assignedCustomer = $this->getFieldValue($obj, 'id_customer') AND $customer['id_customer'] == $assignedCustomer)
-									$jsCustomerId = $i;
-								echo 'customers['.$i++.'] = new Array('.intval($customer['id_customer']).', \''.intval($customer['id_customer']).' - '.addslashes($customer['email']).'\');';
-							}
-								
-							echo '	
-							formDiscount = document.layers ? document.forms.discount : document.discount;
-							formDiscount.id_customer.length = customers.length; /* + 1 */
-
-						    for (i = 1, j = 1; i < customers.length; i++)
-						    {
-						     	if (formDiscount.filter.value)
-									if (customers[i][1].toLowerCase().indexOf(formDiscount.filter.value.toLowerCase()) == -1)
-										continue;
-						    	formDiscount.id_customer.options[j].value = customers[i][0];
-						    	formDiscount.id_customer.options[j].text = customers[i][1];
-						    	j++;
-						    }
-						    if (j == 1 && customers.length > 0)
-						    {
-						    	formDiscount.id_customer.length = 2;
-						    	formDiscount.id_customer.options[1].value = -1;
-						    	formDiscount.id_customer.options[1].text = \''.$this->l('No match found').'\';
-						    	formDiscount.id_customer.options.selectedIndex = 1;
-						    }
-						    else if (customers.length > 0)
-						    {
-						    	formDiscount.id_customer.length = j;
-								formDiscount.id_customer.options.selectedIndex = (formDiscount.filter.value == \'\' ? 0 : 1);
-								'.($assignedCustomer ? 'if (defaultValue) formDiscount.id_customer.options.selectedIndex = '.$jsCustomerId.';' : '').'
-							}
+							$.getJSON("'.dirname($currentIndex).'/ajax.php",{ajaxDiscountCustomers:1,filter:filterValue},
+								function(customers) {
+									if (customers.length == 0)
+									{
+										formDiscount.id_customer.length = 2;
+										formDiscount.id_customer.options[1].value = -1;
+										formDiscount.id_customer.options[1].text = \''.$this->l('No match found').'\';
+										formDiscount.id_customer.options.selectedIndex = 1;
+									}										
+									else
+									{
+										formDiscount.id_customer.length = customers.length + 1;
+										for (i = 0; i < customers.length && i < 50; i++)
+										{
+											formDiscount.id_customer.options[i+1].value = customers[i]["value"];
+											formDiscount.id_customer.options[i+1].text = customers[i]["text"];
+										}
+										if (customers.length >= 50)
+										{
+											formDiscount.id_customer.options[50].text = "'.$this->l('Too much results...',__CLASS__ , true, false).'";
+											formDiscount.id_customer.options[50].value = "_";	
+										}
+										
+										if ($(\'#filter\').val())
+											formDiscount.id_customer.options.selectedIndex = 1;
+										else if(filterValue)
+											for (i = 0; i < customers.length; i++)
+												if (formDiscount.id_customer.options[i+1].value == filterValue)
+													formDiscount.id_customer.options.selectedIndex = i + 1;
+									}
+								}
+							);
 						}
-						
-						fillCustomers(1);
-						  
+						fillCustomersAjax(); 
 					</script>
-				</div><br />
+				</div><br />';
+		includeDatepicker(array('date_from', 'date_to'), true);
+		echo '		
 				<label>'.$this->l('From:').' </label>
 				<div class="margin-form">
-					<input type="text" size="20" name="date_from" value="'.($this->getFieldValue($obj, 'date_from') ? htmlentities($this->getFieldValue($obj, 'date_from'), ENT_COMPAT, 'UTF-8') : date('Y-m-d H:i:s')).'" /> <sup>*</sup>
+					<input type="text" size="20" id="date_from" name="date_from" value="'.($this->getFieldValue($obj, 'date_from') ? htmlentities($this->getFieldValue($obj, 'date_from'), ENT_COMPAT, 'UTF-8') : date('Y-m-d H:i:s')).'" /> <sup>*</sup>
 					<p style="clear: both;">'.$this->l('Start date/time from which voucher can be used').'<br />'.$this->l('Format: YYYY-MM-DD HH:MM:SS').'</p>
 				</div>
 				<label>'.$this->l('To:').' </label>
 				<div class="margin-form">
-					<input type="text" size="20" name="date_to" value="'.($this->getFieldValue($obj, 'date_to') ? htmlentities($this->getFieldValue($obj, 'date_to'), ENT_COMPAT, 'UTF-8') : (date('Y') + 1).date('-m-d H:i:s')).'" /> <sup>*</sup>
+					<input type="text" size="20" id="date_to" name="date_to" value="'.($this->getFieldValue($obj, 'date_to') ? htmlentities($this->getFieldValue($obj, 'date_to'), ENT_COMPAT, 'UTF-8') : (date('Y') + 1).date('-m-d H:i:s')).'" /> <sup>*</sup>
 					<p style="clear: both;">'.$this->l('End date/time at which voucher is no longer valid').'<br />'.$this->l('Format: YYYY-MM-DD HH:MM:SS').'</p>
 				</div>
 				<label>'.$this->l('Status:').' </label>

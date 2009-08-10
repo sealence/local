@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -75,6 +75,10 @@ class		OrderHistory extends ObjectModel
 			$order = new Order(intval($id_order));
 			if (!Validate::isLoadedObject($newOS) OR !Validate::isLoadedObject($order))
 				die(Tools::displayError('Invalid new order state'));
+			
+			/* The order is valid only if the invoice is available and the order is not cancelled */
+			$order->valid = $newOS->logable;
+			$order->update();
 			if ($newOS->invoice AND !$order->invoice_number)
 				$order->setInvoice();
 			if ($newOS->delivery AND !$order->delivery_number)

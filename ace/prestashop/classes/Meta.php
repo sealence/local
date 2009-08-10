@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -57,7 +57,7 @@ class		Meta extends ObjectModel
 		'pdf-order-return', 'pdf-order-slip', 'product-sort', 'statistics', 'zoom', 'images.inc', 'header', 'footer', 'init',
 		'category', 'product', 'cms');
 		foreach ($files as $file)
-			if (eregi('^[a-z0-9_.-]*\.php$', $file) AND !in_array(str_replace('.php', '', $file), $exludePages))
+			if (preg_match('/^[a-z0-9_.-]*\.php$/i', $file) AND !in_array(str_replace('.php', '', $file), $exludePages))
 				$selectedPages[] = str_replace('.php', '', $file);
 		// Exclude page already filled
 		if ($excludeFilled)
@@ -90,7 +90,7 @@ class		Meta extends ObjectModel
 		SELECT *
 		FROM '._DB_PREFIX_.'meta m
 		LEFT JOIN '._DB_PREFIX_.'meta_lang ml on (m.id_meta = ml.id_meta)
-		WHERE m.page = \''.$page.'\' AND ml.id_lang = '.intval($id_lang));
+		WHERE m.page = \''.pSQL($page).'\' AND ml.id_lang = '.intval($id_lang));
 	}
 }
 ?>

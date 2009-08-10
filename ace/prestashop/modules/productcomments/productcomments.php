@@ -15,8 +15,6 @@ class ProductComments extends Module
 
         parent::__construct();
 
-        /* The parent construct is required for translations */
-		$this->page = basename(__FILE__, '.php');
         $this->displayName = $this->l('Product Comments');
         $this->description = $this->l('Allow users to post comment about a product');
     }
@@ -86,16 +84,16 @@ class ProductComments extends Module
 	private function _checkCriterion()
 	{
 		$action_criterion = Tools::getValue('criterion_action');
-		if (Tools::isSubmit('submitCriterion'))
+		$name = Tools::getValue('criterion');
+		if (Tools::isSubmit('submitCriterion') AND empty($action_criterion) AND !empty($name))
 		{
 			global $cookie;
-			
-			$name = Tools::getValue('criterion');
+
 			require_once(dirname(__FILE__).'/ProductCommentCriterion.php');
 			ProductCommentCriterion::add($cookie->id_lang, $name);
 			$this->_html .= '<div class="conf confirm"><img src="../img/admin/ok.gif" alt="'.$this->l('Confirmation').'" />'.$this->l('Settings updated').'</div>';
 		}
-		else if (empty($action_criterion) === false)
+		elseif (!empty($action_criterion) AND empty($name))
 		{
 			$id_product_comment_criterion = Tools::getValue('id_product_comment_criterion');
 			require_once(dirname(__FILE__).'/ProductCommentCriterion.php');
@@ -332,7 +330,6 @@ class ProductComments extends Module
 		foreach ($averages AS $average)
 			$averageTotal += floatval($average);
 		$averageTotal = count($averages) ? ($averageTotal / count($averages)) : 0;
-
 		$smarty->assign(array(
 			'logged' => intval($cookie->id_customer),
 			'action_url' => $_SERVER['PHP_SELF'].'?'.$_SERVER['QUERY_STRING'],

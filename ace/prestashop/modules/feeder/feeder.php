@@ -13,8 +13,6 @@ class Feeder extends Module
 		$this->_directory = dirname(__FILE__).'/../../';
 		parent::__construct();
 		
-		/* The parent construct is required for translations */
-		$this->page = basename(__FILE__, '.php');
 		$this->displayName = $this->l('RSS products feed');
 		$this->description = $this->l('Generate a RSS products feed');
 	}
@@ -35,7 +33,7 @@ class Feeder extends Module
 		$id_category = intval(Tools::getValue('id_category'));
 		if (!$id_category)
 		{
-			if (isset($_SERVER['HTTP_REFERER']) AND ereg('^(.*)\/([0-9]+)\-(.*[^\.])|(.*)id_category=([0-9]+)(.*)$', $_SERVER['HTTP_REFERER'], $regs) AND !strstr($_SERVER['HTTP_REFERER'], '.html'))
+			if (isset($_SERVER['HTTP_REFERER']) AND preg_match('!^(.*)\/([0-9]+)\-(.*[^\.])|(.*)id_category=([0-9]+)(.*)$!', $_SERVER['HTTP_REFERER'], $regs) AND !strstr($_SERVER['HTTP_REFERER'], '.html'))
 			{
 				if (isset($regs[2]) AND is_numeric($regs[2]))
 					$id_category = intval($regs[2]);

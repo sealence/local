@@ -12,8 +12,6 @@ class Blockrss extends Module
 
 		parent::__construct();
 
-		/* The parent construct is required for translations */
-		$this->page = basename(__FILE__, '.php');
 		$this->displayName = $this->l('RSS feed block');
 		$this->description = $this->l('Adds a block displaying an RSS feed');
 
@@ -110,7 +108,7 @@ class Blockrss extends Module
 			for ($i = 0; isset($src) AND $i < ($nb ? $nb : 5); ++$i)
 			{
 				@$item = $src->getEntryByOffset($i);
-				$content .= '<li><a href="'.urlencode(@$item->link).'">'.Tools::htmlentitiesUTF8(@$item->title).'</a></li>';
+				$content .= '<li><a href="'.(@$item->link).'">'.Tools::htmlentitiesUTF8(@$item->title).'</a></li>';
 			}
 		}
 		

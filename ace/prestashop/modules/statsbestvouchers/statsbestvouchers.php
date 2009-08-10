@@ -4,10 +4,10 @@
   * Statistics
   * @category stats
   *
-  * @author John Thiriet / Epitech
+  * @author Damien Metzger / Epitech
   * @copyright Epitech / PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   */
   
 class StatsBestVouchers extends ModuleGrid
@@ -24,7 +24,6 @@ class StatsBestVouchers extends ModuleGrid
 		$this->name = 'statsbestvouchers';
 		$this->tab = 'Stats';
 		$this->version = 1.0;
-		$this->page = basename(__FILE__, '.php');
 		
 		$this->_defaultSortColumn = 'ca';
 		$this->_emptyMessage = $this->l('Empty recordset returned');
@@ -91,24 +90,14 @@ class StatsBestVouchers extends ModuleGrid
 
 	public function getData()
 	{	
-		global $cookie;
-		$id_lang = (isset($cookie->id_lang) ? intval($cookie->id_lang) : Configuration::get(''._DB_PREFIX_.'LANG_DEFAULT'));
-	
 		$this->_totalCount = $this->getTotalCount();
-
 		$this->_query = '
-		SELECT od.name, COUNT(od.id_discount) as total, SUM(o.total_paid_real) as ca
+		SELECT od.name, COUNT(od.id_discount) as total, SUM(o.total_paid_real) / c.conversion_rate as ca
 		FROM '._DB_PREFIX_.'order_discount od
 		LEFT JOIN '._DB_PREFIX_.'orders o ON o.id_order = od.id_order
-		WHERE (
-			SELECT os.`invoice`
-			FROM `'._DB_PREFIX_.'orders` oo
-			LEFT JOIN `'._DB_PREFIX_.'order_history` oh ON oh.`id_order` = oo.`id_order`
-			LEFT JOIN `'._DB_PREFIX_.'order_state` os ON os.`id_order_state` = oh.`id_order_state`
-			WHERE oo.`id_order` = o.`id_order`
-			ORDER BY oh.`date_add` DESC, oh.`id_order_history` DESC
-			LIMIT 1
-		) = 1
+		LEFT JOIN `'._DB_PREFIX_.'currency` c ON o.id_currency = c.id_currency
+		WHERE o.valid = 1
+		AND o.invoice_date BETWEEN '.$this->getDate().'
 		GROUP BY od.id_discount';
 
 		if (Validate::IsName($this->_sort))

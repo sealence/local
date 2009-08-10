@@ -22,15 +22,14 @@ class Cheque extends PaymentModule
 			$this->chequeName = $config['CHEQUE_NAME'];
 		if (isset($config['CHEQUE_ADDRESS']))
 			$this->address = $config['CHEQUE_ADDRESS'];
+			
 		parent::__construct();
 
-		/* The parent construct is required for translations */
-		$this->page = basename(__FILE__, '.php');
 		$this->displayName = $this->l('Cheque');
 		$this->description = $this->l('Module for accepting payments by cheque');
 		$this->confirmUninstall = $this->l('Are you sure you want to delete your details ?');
 		
-		if (!isset($this->address) OR !isset($this->address))
+		if (!isset($this->chequeName) OR !isset($this->address))
 			$this->warning = $this->l('\'To the order of\' and address must be configured in order to use this module correctly');
 		if (!sizeof(Currency::checkPaymentCurrencies($this->id)))
 			$this->warning = $this->l('No currency set for this module');
@@ -121,6 +120,9 @@ class Cheque extends PaymentModule
 
 	function execPayment($cart)
 	{
+		if (!$this->active)
+			return ;
+
 		global $cookie, $smarty;
 		
 		$smarty->assign(array(
@@ -140,6 +142,9 @@ class Cheque extends PaymentModule
 
 	function hookPayment($params)
 	{
+		if (!$this->active)
+			return ;
+
 		global $smarty;
 
 		$smarty->assign(array(
@@ -151,6 +156,9 @@ class Cheque extends PaymentModule
 
 	function hookPaymentReturn($params)
 	{
+		if (!$this->active)
+			return ;
+
 		global $smarty;
 		$state = $params['objOrder']->getCurrentState();
 		if ($state == _PS_OS_CHEQUE_ OR $state == _PS_OS_OUTOFSTOCK_)
@@ -167,5 +175,3 @@ class Cheque extends PaymentModule
 	}
 
 }
-
-?>

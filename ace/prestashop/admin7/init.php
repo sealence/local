@@ -7,7 +7,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.0
+  * @version 1.2
   *
   */
 
@@ -37,6 +37,15 @@ $currentIndex = __PS_BASE_URI__.substr($_SERVER['SCRIPT_NAME'], strlen(__PS_BASE
 if ($back = Tools::getValue('back'))
 	$currentIndex .= '&back='.urlencode($back);
 
+/* Server Params */
+$server_host = htmlspecialchars($_SERVER['HTTP_HOST'], ENT_COMPAT, 'UTF-8');
+$protocol = 'http://';
+$protocol_ssl = 'https://';
+$protocol_link = (Configuration::get('PS_SSL_ENABLED')) ? $protocol_ssl : $protocol;
+$protocol_content = (isset($useSSL) AND $useSSL AND Configuration::get('PS_SSL_ENABLED')) ? $protocol_ssl : $protocol;
+define('_PS_BASE_URL_', $protocol.$server_host);
+define('_PS_BASE_URL_SSL_', $protocol_ssl.$server_host);
+
 /* Include appropriate language file */
 Tools::setCookieLanguage();
 if (Tools::isSubmit('adminlang'))
@@ -53,5 +62,8 @@ include(_PS_TRANSLATIONS_DIR_.$iso.'/admin.php');
 
 /* Database connection (singleton) */
 Db::getInstance();
+
+/* attribute id_lang is often needed, so we create a constant for performance reasons */
+define('_USER_ID_LANG_', intval($cookie->id_lang));
 
 ?>

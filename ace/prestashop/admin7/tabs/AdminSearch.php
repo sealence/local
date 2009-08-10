@@ -1,5 +1,16 @@
 <?php
 
+/**
+  * Search tab for admin panel, AdminSearch.php
+  * @category admin
+  *
+  * @author PrestaShop <support@prestashop.com>
+  * @copyright PrestaShop
+  * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
+  * @version 1.2
+  *
+  */
+
 include_once(PS_ADMIN_DIR.'/../classes/AdminTab.php');
 
 class AdminSearch extends AdminTab
@@ -108,19 +119,35 @@ class AdminSearch extends AdminTab
 			}
 
 			/* Cart */
-			elseif (intval($_POST['bo_search_type']) == 4)
+			elseif (intval($_POST['bo_search_type']) == 5)
 			{
 				if (intval($_POST['bo_query']) AND Validate::isUnsignedInt(intval($_POST['bo_query'])))
 				{
-					if ($id_order = Order::getOrderByCartId(intval($_POST['bo_query'])))
-						Tools::redirectAdmin('index.php?tab=AdminOrders&id_order='.intval($id_order).'&vieworder'.'&token='.Tools::getAdminToken('AdminOrders'.intval(Tab::getIdFromClassName('AdminOrders')).intval($cookie->id_employee)));
-					else if ($cart = new Cart(intval($_POST['bo_query'])) AND $cart->id)
-						$this->_list['cart'] = $cart;
+					if ($cart = new Cart(intval($_POST['bo_query'])) AND $cart->id)
+					{
+						Tools::redirectAdmin('index.php?tab=AdminCarts&id_cart='.intval($cart->id).'&viewcart'.'&token='.Tools::getAdminToken('AdminCarts'.intval(Tab::getIdFromClassName('AdminCarts')).intval($cookie->id_employee)));
+					}
 					else
 						$this->_errors[] = Tools::displayError('cart #').intval($_POST['bo_query']).' '.Tools::displayError('not found');
 				}
 				else
 					$this->_errors[] = Tools::displayError('please type a cart ID');
+			}
+			
+			/* Invoices */
+			elseif (intval($_POST['bo_search_type']) == 4)
+			{
+				if (intval($_POST['bo_query']) AND Validate::isUnsignedInt(intval($_POST['bo_query'])))
+				{
+					if ($invoice = Order::getInvoice(intval($_POST['bo_query'])))
+					{
+						Tools::redirectAdmin('pdf.php?id_order='.intval($invoice['id_order']).'&pdf');
+					}
+					else
+						$this->_errors[] = Tools::displayError('invoice #').intval($_POST['bo_query']).' '.Tools::displayError('not found');
+				}
+				else
+					$this->_errors[] = Tools::displayError('please type an invoice ID');
 			}
 			else
 				Tools::displayError('please fill in search form first.');

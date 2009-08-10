@@ -4,7 +4,7 @@
 <p>
 	{l s='Other wishlists of' mod='blockwishlist'} {$current_wishlist.firstname} {$current_wishlist.lastname}: 
 	{foreach from=$wishlists item=wishlist name=i}
-	<a href="modules/blockwishlist/view.php?token={$wishlist.token}">{$wishlist.name}</a>
+	<a href="{$base_dir_ssl}modules/blockwishlist/view.php?token={$wishlist.token}">{$wishlist.name}</a>
 		{if !$smarty.foreach.i.last}
 			/
 		{/if}
@@ -18,7 +18,7 @@
 	{foreach from=$products item=product name=i}
 	<ul class="address {if $smarty.foreach.i.last}last_item{elseif $smarty.foreach.i.first}first_item{/if} {if $smarty.foreach.i.index % 2}alternate_item{else}item{/if}" id="block_{$product.id_product}_{$product.id_product_attribute}">
 	<div class="ajax_block_product">
-		<li class="address_title"><a href="{$link->getProductLink($product.id_product, $product.link_rewrite)}" title="{l s='View' mod='blockwishlist'}">{$product.name|truncate:30|escape:'htmlall':'UTF-8'}</a></li>
+		<li class="address_title"><a href="{$link->getProductLink($product.id_product, $product.link_rewrite)}" title="{l s='View' mod='blockwishlist'}">{$product.name|truncate:30:'...'|escape:'htmlall':'UTF-8'}</a></li>
 		<li class="address_name">
 			<a	href="{$link->getProductlink($product.id_product, $product.link_rewrite)}" title="{l s='Product detail' mod='blockwishlist'}">
 				<img src="{$img_prod_dir}{$product.cover}-medium.jpg" alt="{$product.name|escape:'htmlall':'UTF-8'}" />
@@ -27,14 +27,14 @@
 		{if isset($product.attributes_small)}
 			<br /><a href="{$link->getProductlink($product.id_product, $product.link_rewrite)}" title="{l s='Product detail' mod='blockwishlist'}">{$product.attributes_small|escape:'htmlall':'UTF-8'}</a>
 		{/if}
-			<br />{l s='Quantity' mod='blockwishlist'}:<input type="text" id="{$product.id_product}_{$product.id_product_attribute}" size="3" value="{$product.quantity|intval}" />
-			<br />{l s='Priority' mod='blockwishlist'}:
+			<br />{l s='Quantity:' mod='blockwishlist'}<input type="text" id="{$product.id_product}_{$product.id_product_attribute}" size="3" value="{$product.quantity|intval}" />
+			<br />{l s='Priority:' mod='blockwishlist'}
 			{if $product.priority eq 0}
-				<span style="color:darkred;">{l s='High' mod='blockwishlist'}</span>
+				<span style="color:darkred; float:right;">{l s='High' mod='blockwishlist'}</span>
 			{elseif $product.priority eq 1}
-				<span style="color:darkorange;">{l s='Medium' mod='blockwishlist'}</span>
+				<span style="color:darkorange; float:right;">{l s='Medium' mod='blockwishlist'}</span>
 			{else}
-				<span style="color:green;">{l s='Low' mod='blockwishlist'}</span>
+				<span style="color:green; float:right;">{l s='Low' mod='blockwishlist'}</span>
 			{/if}
 		</span>
 		</li>

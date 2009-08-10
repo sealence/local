@@ -9,7 +9,7 @@ class productsCategory extends Module
  	 	$this->tab = 'Products';
 		
 		parent::__construct();
-		$this->page = basename(__FILE__, '.php');
+		
 		$this->displayName = $this->l('Products Category');
 		$this->description = $this->l('Display products of the same category on the product page');
  	}
@@ -43,11 +43,26 @@ class productsCategory extends Module
 		if ($category->id_category == 1 AND isset($product->id_category_default) AND $product->id_category_default > 1)
 			$category = New Category(intval($product->id_category_default));
 		if (!Validate::isLoadedObject($category))
-			Tools::displayError('Bad category !');
+			Tools::displayError('Bad category!');
+		if (intval($category->id_category) === 1)
+			return;
 		
 		// Get infos
 		$sizeOfCategoryProducts = $category->getProducts(intval($cookie->id_lang), 1, 30, NULL, NULL, true);
 		$categoryProducts = $category->getProducts(intval($cookie->id_lang), 1, $sizeOfCategoryProducts);
+		
+		//remove current product from the list
+		$current_product_key = null;
+		foreach ($categoryProducts as $key => $categoryProduct)
+		{
+			if ($categoryProduct['id_product'] == $idProduct)
+			{
+				$current_product_key = $key;
+				break;
+			}
+		}
+		if (isset($categoryProducts[$current_product_key]))
+			unset($categoryProducts[$current_product_key]);
 		
 		// Get positions
 		$middlePosition = round($sizeOfCategoryProducts / 2, 0);

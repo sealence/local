@@ -11,9 +11,8 @@ class BlockViewed extends Module
 		$this->tab = 'Blocks';
 		$this->version = 0.9;
 
-		parent::__construct(); /* The parent construct is required for translations */
-
-		$this->page = basename(__FILE__, '.php');
+		parent::__construct();
+		
 		$this->displayName = $this->l('Viewed products block');
 		$this->description = $this->l('Adds a block displaying last-viewed products');
 	}
@@ -21,7 +20,7 @@ class BlockViewed extends Module
 	function install()
 	{
 		if (!parent::install()
-			OR !$this->registerHook('rightColumn')
+			OR !$this->registerHook('leftColumn')
 			OR !Configuration::updateValue('PRODUCTS_VIEWED_NBR', 2))
 			return false;
 		return true;
@@ -71,6 +70,7 @@ class BlockViewed extends Module
 		if (sizeof($productsViewed))
 		{
 			$productsViewedObj = array();
+			
 			foreach ($productsViewed AS $productViewed)
 			{
 				$obj = new Product(intval($productViewed), false, intval($params['cookie']->id_lang));
@@ -105,8 +105,10 @@ class BlockViewed extends Module
 
 			if (!sizeof($productsViewedObj))
 				return ;
-
-			$smarty->assign('productsViewedObj', $productsViewedObj);
+			
+			$smarty->assign(array(
+				'productsViewedObj' => $productsViewedObj,
+				'mediumSize' => Image::getSize('medium')));
 			return $this->display(__FILE__, 'blockviewed.tpl');
 		}
 		elseif (isset($product) AND Validate::isLoadedObject($product))

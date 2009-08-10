@@ -38,7 +38,7 @@ class Tm4b extends Module
 		$this->displayName = 'SMS Tm4b';
 		$this->description = $this->l('Sends an SMS for each new order');
 		$this->tab = 'Tools';
-		$this->version = 1.0;
+		$this->version = 1.1;
 		
 		$this->_data = array('shopname' => Configuration::get('PS_SHOP_NAME'));
 		
@@ -53,10 +53,9 @@ class Tm4b extends Module
 		$this->_alert_new_order_active = Configuration::get('TM4B_ALERT_NO_ACTIVE');
 		$this->_alert_update_quantity_active = Configuration::get('TM4B_ALERT_UQ_ACTIVE');
 		$this->_daily_report_active = Configuration::get('TM4B_DAILY_REPORT_ACTIVE');
+		
 		parent::__construct();
 		
-		/* The parent construct is required for translations */
-		$this->page = basename(__FILE__, '.php');
 		$this->displayName = 'SMS Tm4b';
 		$this->description = $this->l('Sends an SMS for each new order');
 		$this->confirmUninstall = $this->l('Are you sure you want to delete your info?');
@@ -125,7 +124,7 @@ class Tm4b extends Module
 
 		$body = $this->_getTplBody(self::$_tpl_sms_files['name']['new_orders'].self::$_tpl_sms_files['ext']['new_orders'], $templateVars);
 		
-		$sms = new Tm4bSms($this->_user, $this->_password, $this->_route);
+		$sms = new Tm4bSms($this->_user, $this->_password, $this->_route, $this->_originator);
 		$sms->msg = $body;
 		$numbers = explode(self::__TM4B_NUMBER_DELIMITOR__, $this->_new_order_numbers);
 		foreach ($numbers as $number)
@@ -155,7 +154,7 @@ class Tm4b extends Module
 		
 		if (!empty($body))
 		{
-			$sms = new Tm4bSms($this->_user, $this->_password, $this->_route);
+			$sms = new Tm4bSms($this->_user, $this->_password, $this->_route, $this->_originator);
 			$sms->msg = $body;
 			$numbers = explode(self::__TM4B_NUMBER_DELIMITOR__, $this->_new_order_numbers);
 			foreach ($numbers as $number)
@@ -176,7 +175,7 @@ class Tm4b extends Module
 			{
 				if (!empty($this->_user) AND !empty($this->_password) AND !empty($_POST['test_number']) AND is_numeric($_POST['test_number']))
 				{
-					$sms = new Tm4bSms($this->_user, $this->_password, $this->_route);
+					$sms = new Tm4bSms($this->_user, $this->_password, $this->_route, $this->_originator);
 					$sms->msg = 'Test SMS for your PrestaShop website';
 					$sms->addRecipient($_POST['test_number']);
 					$ret = $sms->Send($this->_simulation);
@@ -220,7 +219,7 @@ class Tm4b extends Module
 				<input class="button" name="btnTestSms" value="'.$testsms_txt.'" type="submit" style="margin-bottom:10px;" /><br />'.$this->l('ex: 33642424242').'</div>';
 				if (!empty($this->_user) AND !empty($this->_password))
 				{
-					$sms = new Tm4bSms($this->_user, $this->_password, $this->_route);
+					$sms = new Tm4bSms($this->_user, $this->_password, $this->_route, $this->_originator);
 					$credits = $sms->CheckCredits();
 					$color = ($credits < self::__TM4B_LOWBALANCE__ ? '#900' : '#080');
 					$this->_html .= '<label>'.$this->l('SMS credits:').'</label>
@@ -296,7 +295,7 @@ class Tm4b extends Module
 		$this->_new_order_numbers = '';
 		foreach ($numbers as $number)
 		{
-		  if (ereg ("([0-9]+)", $number, $regs))
+		  if (preg_match("/([0-9]+)/", $number, $regs))
 			$this->_new_order_numbers .= $regs[1].self::__TM4B_NUMBER_DELIMITOR__;
 		}
 		Configuration::updateValue('TM4B_NEW_ORDER_NUMBERS', $this->_new_order_numbers);
@@ -317,7 +316,7 @@ class Tm4b extends Module
 			$this->_postErrors[] = $this->l('Mode is mandatory');
 		elseif (empty($_POST['new_order_numbers']))
 			$this->_postErrors[] = $this->l('Please enter a phone number');
-		elseif (ereg ("([^0-9[:space:],])", $_POST['new_order_numbers'], $regs))
+		elseif (preg_match('/([^0-9[:space:],])/', $_POST['new_order_numbers'], $regs))
 			$this->_postErrors[]  = $this->l('Phone number invalid');
 	}
 	

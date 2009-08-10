@@ -1,5 +1,16 @@
 <?php
 
+/**
+  * Image resize tab for admin panel, AdminImageResize.php
+  * @category admin
+  *
+  * @author PrestaShop <support@prestashop.com>
+  * @copyright PrestaShop
+  * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
+  * @version 1.2
+  *
+  */
+
 include_once(PS_ADMIN_DIR.'/../classes/AdminTab.php');
 
 class AdminImageResize extends AdminTab
@@ -22,7 +33,11 @@ class AdminImageResize extends AdminTab
 				$_POST[$imageType['id_image_type'].'_x1'],
 				$_POST[$imageType['id_image_type'].'_y1']))
 					$this->_errors = Tools::displayError('an error occurred while copying image').' '.stripslashes($imageType['name']);
-			Tools::redirectAdmin($currentIndex.'&id_product='.Tools::getValue('id_product').'&addproduct&conf=4&tabs=1'.'&token='.Tools::getAdminToken('AdminCatalog'.intval(Tab::getIdFromClassName('AdminCatalog')).intval($cookie->id_employee)));
+				// Save and stay on same form
+				if (Tools::getValue('saveandstay') == 'on')
+					Tools::redirectAdmin($currentIndex.'&id_product='.Tools::getValue('id_product').'&id_category='.intval(Tools::getValue('id_category')).'&addproduct&conf=4&tabs=1&token='.Tools::getAdminToken('AdminCatalog'.intval(Tab::getIdFromClassName('AdminCatalog')).intval($cookie->id_employee)));
+				// Default behavior (save and back)
+				Tools::redirectAdmin($currentIndex.'&id_category='.intval(Tools::getValue('id_category')).'&conf='.intval(Tools::getValue('conf')).'&token='.Tools::getAdminToken('AdminCatalog'.intval(Tab::getIdFromClassName('AdminCatalog')).intval($cookie->id_employee)));
 		} else
 			parent::postProcess();
 	}
@@ -41,6 +56,9 @@ class AdminImageResize extends AdminTab
 			<script type="text/javascript" src="../js/cropper/loader.js"></script>
 			<form enctype="multipart/form-data"  method="post" action="'.$currentIndex.'&imageresize&token='.Tools::getAdminToken('AdminCatalog'.intval(Tab::getIdFromClassName('AdminCatalog')).intval($cookie->id_employee)).'">
 				<input type="hidden" name="id_product" value="'.Tools::getValue('id_product').'" />
+				<input type="hidden" name="id_category" value="'.Tools::getValue('id_category').'" />
+				<input type="hidden" name="saveandstay" value="'.Tools::getValue('submitAddAndStay').'" />
+				<input type="hidden" name="conf" value="'.(Tools::getValue('toconf')).'" />
 				<input type="hidden" name="imageresize" value="imageresize" />
 				<input type="hidden" name="id_image" value="'.Tools::getValue('id_image').'" />
 				<fieldset class="width2">

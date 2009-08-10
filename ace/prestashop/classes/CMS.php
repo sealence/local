@@ -1,5 +1,17 @@
 <?php
 
+/**
+  * CMS class, CMS.php
+  * CMS management
+  * @category classes
+  *
+  * @author PrestaShop <support@prestashop.com>
+  * @copyright PrestaShop
+  * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
+  * @version 1.2
+  *
+  */
+
 class CMS extends ObjectModel
 {
 	public $meta_title;
@@ -9,7 +21,7 @@ class CMS extends ObjectModel
 	public $link_rewrite;
 
  	protected $fieldsRequiredLang = array('meta_title', 'link_rewrite');
-	protected $fieldsSizeLang = array('meta_description' => 255, 'meta_keywords' => 255, 'meta_title' => 128, 'link_rewrite' => 128);
+	protected $fieldsSizeLang = array('meta_description' => 255, 'meta_keywords' => 255, 'meta_title' => 128, 'link_rewrite' => 128, 'content' => 65536);
 	protected $fieldsValidateLang = array('meta_description' => 'isGenericName', 'meta_keywords' => 'isGenericName', 'meta_title' => 'isGenericName', 'link_rewrite' => 'isLinkRewrite', 'content' => 'isCleanHTML');
 
 	protected $table = 'cms';
@@ -29,7 +41,7 @@ class CMS extends ObjectModel
 		{
 			$fields[$language['id_lang']]['id_lang'] = $language['id_lang'];
 			$fields[$language['id_lang']][$this->identifier] = intval($this->id);
-			$fields[$language['id_lang']]['content'] = (isset($this->content[$language['id_lang']])) ? pSQL($this->content[$language['id_lang']], true) : '';
+			$fields[$language['id_lang']]['content'] = (isset($this->content[$language['id_lang']])) ? Tools::htmlentitiesDecodeUTF8(pSQL($this->content[$language['id_lang']], true)) : '';
 			foreach ($fieldsArray as $field)
 			{
 				if (!Validate::isTableOrIdentifier($field))
@@ -71,15 +83,16 @@ class CMS extends ObjectModel
 		SELECT c.id_cms, cl.link_rewrite, cl.meta_title
 		FROM '._DB_PREFIX_.'cms c
 		LEFT JOIN '._DB_PREFIX_.'cms_lang cl ON (c.id_cms = cl.id_cms AND cl.id_lang = '.intval($id_lang).')
-		'.(($selection AND sizeof($selection)) ? 'WHERE c.id_cms IN ('.implode(',', array_map('intval', $selection)).')' : ''));
+		'.(($selection !== null) ? 'WHERE c.id_cms IN ('.implode(',', array_map('intval', $selection)).')' : ''));
 		
 		$link = new Link();
 		$links = array();
-		foreach ($result as $row)
-		{
-			$row['link'] = $link->getCMSLink($row['id_cms'], $row['link_rewrite']);
-			$links[] = $row;
-		}
+		if ($result)
+			foreach ($result as $row)
+			{
+				$row['link'] = $link->getCMSLink($row['id_cms'], $row['link_rewrite']);
+				$links[] = $row;
+			}
 		return $links;
 	}
 	
@@ -107,7 +120,7 @@ class CMS extends ObjectModel
 	{
 		Db::getInstance()->Execute('DELETE FROM `'._DB_PREFIX_.'block_cms`
     															WHERE `id_block` ='.intval($id_block));
-		foreach($cms AS $id_cms)
+		foreach ($cms AS $id_cms)
 			Db::getInstance()->Execute('INSERT INTO '._DB_PREFIX_.'block_cms (id_block, id_cms) VALUES
 																('.intval($id_block).', '.intval($id_cms).')');
 			return true;

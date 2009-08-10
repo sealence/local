@@ -7,7 +7,7 @@
   * @author Damien Metzger / Epitech
   * @copyright Epitech / PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   */
   
 class StatsCatalog extends Module
@@ -20,7 +20,6 @@ class StatsCatalog extends Module
         $this->name = 'statscatalog';
         $this->tab = 'Stats';
         $this->version = 1.0;
-		$this->page = basename(__FILE__, '.php');
 		
         parent::__construct();
 		
@@ -57,26 +56,18 @@ class StatsCatalog extends Module
 		return isset($result['viewed']) ? $result['viewed'] : 0;
 	}
 	
-	public function getProductsNV()
+	public function getTotalProductViewed()
 	{
-		$result = Db::getInstance()->getRow('
-		SELECT COUNT(p.`id_product`) as total
-		FROM `'._DB_PREFIX_.'product` p
+		return Db::getInstance()->getValue('
+		SELECT COUNT(DISTINCT pa.`id_object`)
+		FROM `'._DB_PREFIX_.'page_viewed` pv
+		LEFT JOIN `'._DB_PREFIX_.'page` pa ON pv.`id_page` = pa.`id_page`
+		LEFT JOIN `'._DB_PREFIX_.'page_type` pt ON pt.`id_page_type` = pa.`id_page_type`
+		LEFT JOIN `'._DB_PREFIX_.'product` p ON p.`id_product` = pa.`id_object`
 		'.$this->_join.'
-		WHERE p.`id_product` NOT IN (
-			SELECT pa.`id_object`
-			FROM `'._DB_PREFIX_.'page_viewed` pv
-			LEFT JOIN `'._DB_PREFIX_.'page` pa ON pv.`id_page` = pa.`id_page`
-			LEFT JOIN `'._DB_PREFIX_.'page_type` pt ON pt.`id_page_type` = pa.`id_page_type`
-			LEFT JOIN `'._DB_PREFIX_.'product` p ON p.`id_product` = pa.`id_object`
-			'.$this->_join.'
-			WHERE pt.`name` = \'product.php\'
-			AND p.`active` = 1
-			'.$this->_where.'
-			GROUP BY pa.`id_object`)
+		WHERE pt.`name` = \'product.php\'
 		AND p.`active` = 1
 		'.$this->_where);
-		return $result['total'];
 	}
 	
 	public function getTotalBought()
@@ -86,15 +77,7 @@ class StatsCatalog extends Module
 		FROM `'._DB_PREFIX_.'orders` o
 		LEFT JOIN `'._DB_PREFIX_.'order_detail` od ON o.`id_order` = od.`id_order`
 		'.$this->_join.'
-		WHERE (
-			SELECT os.`invoice`
-			FROM `'._DB_PREFIX_.'orders` oo
-			LEFT JOIN `'._DB_PREFIX_.'order_history` oh ON oh.`id_order` = oo.`id_order`
-			LEFT JOIN `'._DB_PREFIX_.'order_state` os ON os.`id_order_state` = oh.`id_order_state`
-			WHERE oo.`id_order` = o.`id_order`
-			ORDER BY oh.`date_add` DESC, oh.`id_order_history` DESC
-			LIMIT 1
-		) = 1
+		WHERE o.valid = 1
 		'.$this->_where);
 		return isset($result['bought']) ? $result['bought'] : 0;
 	}
@@ -107,15 +90,7 @@ class StatsCatalog extends Module
 		LEFT JOIN `'._DB_PREFIX_.'order_detail` od ON o.`id_order` = od.`id_order`
 		LEFT JOIN `'._DB_PREFIX_.'product` p ON p.`id_product` = od.`product_id`
 		'.$this->_join.'
-		WHERE (
-			SELECT os.`invoice`
-			FROM `'._DB_PREFIX_.'orders` oo
-			LEFT JOIN `'._DB_PREFIX_.'order_history` oh ON oh.`id_order` = oo.`id_order`
-			LEFT JOIN `'._DB_PREFIX_.'order_state` os ON os.`id_order_state` = oh.`id_order_state`
-			WHERE oo.`id_order` = o.`id_order`
-			ORDER BY oh.`date_add` DESC, oh.`id_order_history` DESC
-			LIMIT 1
-		) = 1
+		WHERE o.valid = 1
 		'.$this->_where.'
 		AND p.`active` = 1
 		GROUP BY p.`id_product`');
@@ -169,7 +144,7 @@ class StatsCatalog extends Module
 		if ($conversionReverse = number_format(floatval($totalBought ? ($totalPageViewed / $totalBought) : 0), 2, '.', ''))
 			$conversion .= ' (1 '.$this->l('purchase').' / '.$conversionReverse.' '.$this->l('visits').')';
 
-		$totalNV = $this->getProductsNV();
+		$totalNV = $total - $this->getTotalProductViewed();
 		
 		$html = '
 		<script type="text/javascript" language="javascript">openCloseLayer(\'calendar\');</script>

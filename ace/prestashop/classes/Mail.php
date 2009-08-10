@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
   
@@ -85,7 +85,7 @@ class Mail
 				die(Tools::displayError('Error - The following email template is missing:').' '.$templatePath.$template.'.txt');
 				
 			$templateHtml = file_get_contents($templatePath.$template.'.html');
-			$templateTxt = utf8_encode(strip_tags(html_entity_decode(file_get_contents($templatePath.$template.'.txt'), NULL, 'utf-8')));
+			$templateTxt = strip_tags(html_entity_decode(file_get_contents($templatePath.$template.'.txt'), NULL, 'utf-8'));
 			include_once(dirname(__FILE__).'/../mails/'.$iso.'/lang.php');
 
 			global $_LANGMAIL;
@@ -107,8 +107,6 @@ class Mail
 			return $send;
 		}
 	
-		catch (Swift_Connection_Exception $e) { return false; }
+		catch (Swift_ConnectionException $e) { return false; }
 	}
 }
-
-?>

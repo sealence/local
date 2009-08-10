@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
   
@@ -38,18 +38,18 @@ class		Message extends ObjectModel
 	public 		$date_add;
 	
 	protected	$fieldsRequired = array('message');
-	protected	$fieldsSize = array('message' => 600);
+	protected	$fieldsSize = array('message' => 1600);
 	protected	$fieldsValidate = array(
-		'message' => 'isMessage', 'id_cart' => 'isUnsignedId', 'id_order' => 'isUnsignedId',
+		'message' => 'isCleanHtml', 'id_cart' => 'isUnsignedId', 'id_order' => 'isUnsignedId',
 		'id_customer' => 'isUnsignedId', 'id_employee' => 'isUnsignedId', 'private' => 'isBool');
-	
+
 	protected 	$table = 'message';
 	protected 	$identifier = 'id_message';
 
 	public function getFields()
 	{
 		parent::validateFields();
-		
+
 		$fields['message'] = pSQL($this->message, true);
 		$fields['id_cart'] = intval($this->id_cart);
 		$fields['id_order'] = intval($this->id_order);
@@ -57,7 +57,7 @@ class		Message extends ObjectModel
 		$fields['id_employee'] = intval($this->id_employee);
 		$fields['private'] = intval($this->private);
 		$fields['date_add'] = pSQL($this->date_add);
-				
+
 		return $fields;
 	}
 
@@ -82,7 +82,7 @@ class		Message extends ObjectModel
 	  * Return name from Order ID
 	  *
 	  * @param integer $id_order Order ID
-	  * @param boolean $private return only private messages
+	  * @param boolean $private return WITH private messages
 	  * @return array Messages
 	  */
 	static public function getMessagesByOrderId($id_order, $private = false)
@@ -90,15 +90,36 @@ class		Message extends ObjectModel
 	 	if (!Validate::isBool($private))
 	 		die(Tools::displayError());
 
+		global $cookie;
 		$result = Db::getInstance()->ExecuteS('
-		SELECT m.*, c.`firstname` AS cfirstname, c.`lastname` AS clastname, e.`firstname` AS efirstname, e.`lastname` AS elastname
-		FROM `'._DB_PREFIX_.'message` m
-		LEFT JOIN `'._DB_PREFIX_.'customer` c ON m.`id_customer` = c.`id_customer`
-		LEFT OUTER JOIN `'._DB_PREFIX_.'employee` e ON e.`id_employee` = m.`id_employee`
-		WHERE `id_order` = '.intval($id_order).'
-		'.($private ? ' AND m.`private` = 0' : '').'
-		ORDER BY `date_add` ASC');
+			SELECT m.*, c.`firstname` AS cfirstname, c.`lastname` AS clastname, e.`firstname` AS efirstname, e.`lastname` AS elastname, (COUNT(mr.id_message) = 0 AND m.id_customer != 0) AS is_new_for_me
+			FROM `'._DB_PREFIX_.'message` m
+			LEFT JOIN `'._DB_PREFIX_.'customer` c ON m.`id_customer` = c.`id_customer`
+			LEFT JOIN `'._DB_PREFIX_.'message_readed` mr ON (mr.id_message = m.id_message AND mr.id_employee = '.intval($cookie->id_employee).')
+			LEFT OUTER JOIN `'._DB_PREFIX_.'employee` e ON e.`id_employee` = m.`id_employee`
+			WHERE id_order = '.intval($id_order).'
+			'.(!$private ? ' AND m.`private` = 0' : '').'
+			GROUP BY m.id_message
+			ORDER BY m.date_add DESC
+		');
+		return $result;
+	}
 	
+	/**
+	  * Registered a message 'readed'
+	  *
+	  * @param integer $id_message Message ID
+	  * @param integer $id_emplyee Employee ID
+	  */
+	static public function markAsReaded($id_message, $id_employee)
+	{
+	 	if (!Validate::isUnsignedId($id_message) OR !Validate::isUnsignedId($id_employee))
+	 		die(Tools::displayError());
+
+		$result = Db::getInstance()->Execute('
+		INSERT INTO '._DB_PREFIX_.'message_readed (id_message , id_employee , date_add) VALUES
+		('.intval($id_message).', '.intval($id_employee).', NOW());
+		');
 		return $result;
 	}
 }

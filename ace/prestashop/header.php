@@ -8,7 +8,7 @@ require_once(dirname(__FILE__).'/init.php');
 /* CSS */
 $css_files[_THEME_CSS_DIR_.'global.css'] = 'all';
 
-/* Hooks are volontary out the initialize array (need those variables already assigned) */ 
+/* Hooks are volontary out the initialize array (need those variables already assigned) */
 $smarty->assign(array(
 	'HOOK_HEADER' => Module::hookExec('header'),
 	'HOOK_LEFT_COLUMN' => Module::hookExec('leftColumn'),

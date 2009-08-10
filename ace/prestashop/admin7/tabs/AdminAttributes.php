@@ -7,7 +7,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -91,7 +91,7 @@ class AdminAttributes extends AdminTab
 					<div class="margin-form">
 						<p>'.(file_exists(_PS_IMG_DIR_.$this->fieldImageSettings['dir'].'/'.$obj->id.'.jpg')
 							? '<img src="../img/'.$this->fieldImageSettings['dir'].'/'.$obj->id.'.jpg" alt="" title="" /> <a href="'.$_SERVER['REQUEST_URI'].'&deleteImage=1"><img src="../img/admin/delete.gif" alt="'.$this->l('delete').'" title="" /></a>'
-							: $this->l('No one.')
+							: $this->l('None')
 						).'</p>
 					</div>
 				</div>

@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
   
@@ -110,7 +110,8 @@ class		Discount extends ObjectModel
 	{
 		if (!parent::delete())
 			return false;
-		return Db::getInstance()->Execute('DELETE FROM '._DB_PREFIX_.'cart_discount WHERE id_discount = '.intval($this->id));
+		return (Db::getInstance()->Execute('DELETE FROM '._DB_PREFIX_.'cart_discount WHERE id_discount = '.intval($this->id)) 
+								AND Db::getInstance()->Execute('DELETE FROM '._DB_PREFIX_.'discount_category WHERE id_discount = '.intval($this->id)));
 	}
 	
 	public function getTranslationsFieldsChild()
@@ -192,52 +193,52 @@ class		Discount extends ObjectModel
 	  * @param boolean $order_total_products Total cart products amount
 	  * @return mixed Return a float value or '!' if reduction is 'Shipping free'
 	  */
-	function getValue($nb_discounts = 0, $order_total_products = 0, $shipping_fees = 0, $idCart = false)
+	function getValue($nb_discounts = 0, $order_total_products = 0, $shipping_fees = 0, $idCart = false, $useTax = true)
 	{
-		$totalAmount = floatval($order_total_products) + floatval($shipping_fees);
-		if ($this->minimal > 0 AND $totalAmount < $this->minimal)
-			return 0;
+		$totalAmount = 0;
+
 		if (!$this->cumulable AND intval($nb_discounts) > 1)
 			return 0;
 		if (!$this->active)
 			return 0;
 		if (!$this->quantity)
 			return 0;
-        $date_start = strtotime($this->date_from);
-        $date_end = strtotime($this->date_to);
-        if (time() < $date_start OR time() > $date_end) return 0;
+		$date_start = strtotime($this->date_from);
+		$date_end = strtotime($this->date_to);
+		if (time() < $date_start OR time() > $date_end) return 0;
 
 		$cart = new Cart(intval($idCart));
 		$products = $cart->getProducts();
 		$categories = Discount::getCategories(intval($this->id));
 		$in_category = false;
 
-        switch ($this->id_discount_type)
-        {
+		foreach ($products AS $product)
+			if(count($categories))
+				if (Product::idIsOnCategoryId($product['id_product'], $categories))
+					$totalAmount += $useTax ? $product['total_wt'] : $product['total'];
+		
+		$totalAmount += floatval($shipping_fees);
+		if ($this->minimal > 0 AND $totalAmount < $this->minimal)
+			return 0;
+
+		switch ($this->id_discount_type)
+		{
 			case 1:
 				// % on order
 				$amount = 0;
 				$percentage = $this->value / 100;
 				foreach ($products AS $product)
-				{
-					$oProduct = new Product(intval($product['id_product']));
-					foreach ($categories AS $category)
-						if ($oProduct->isOnCategoryId(intval($category['id_category'])))
-						{
-							$amount += $product['total_wt'] * $percentage;
-							break;
-						}
-				}
+						if (Product::idIsOnCategoryId($product['id_product'], $categories))
+							$amount += ($useTax ? $product['total_wt'] : $product['total']) * $percentage;
 				return $amount;
 			case 2:
 				// amount
 				foreach ($products AS $product)
-				{
-					$oProduct = new Product(intval($product['id_product']));
-					foreach ($categories AS $category)
-						if ($oProduct->isOnCategoryId(intval($category['id_category'])))
+						if (Product::idIsOnCategoryId($product['id_product'], $categories))
+						{
 							$in_category = true;
-				}
+							break;
+						}
 				return (($in_category) ? $this->value : 0);
 			case 3:
 				// Shipping is free
@@ -293,7 +294,7 @@ class		Discount extends ObjectModel
 
 	static public function discountExists($discountName, $id_discount = 0)
 	{
-		return Db::getInstance()->getRow('SELECT `id_discount` FROM '._DB_PREFIX_.'discount WHERE `name` LIKE \''.$discountName.'\' AND `id_discount` != '.intval($id_discount));
+		return Db::getInstance()->getRow('SELECT `id_discount` FROM '._DB_PREFIX_.'discount WHERE `name` LIKE \''.pSQL($discountName).'\' AND `id_discount` != '.intval($id_discount));
 	}
 
 	static public function createOrderDiscount($order, $productList, $qtyList, $name, $shipping_cost = false, $id_category = 0, $subcategory = 0)

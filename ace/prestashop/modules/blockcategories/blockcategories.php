@@ -10,8 +10,6 @@ class BlockCategories extends Module
 
 		parent::__construct();
 
-		/* The parent construct is required for translations */
-		$this->page = basename(__FILE__, '.php');
 		$this->displayName = $this->l('Categories block');
 		$this->description = $this->l('Adds a block featuring product categories');
 	}
@@ -72,14 +70,14 @@ class BlockCategories extends Module
 		</form>';
 	}
 
-	function getTree($resultParents, $resultIds, $id_category = 1, $currentDepth = 0)
+	function getTree($resultParents, $resultIds, $maxDepth, $id_category = 1, $currentDepth = 0)
 	{
 		global $link;
 		
 		$children = array();
-		if (isset($resultParents[$id_category]) AND sizeof($resultParents[$id_category]) AND (Configuration::get('BLOCK_CATEG_MAX_DEPTH') == 0 OR $currentDepth < Configuration::get('BLOCK_CATEG_MAX_DEPTH')))
+		if (isset($resultParents[$id_category]) AND sizeof($resultParents[$id_category]) AND ($maxDepth == 0 OR $currentDepth < $maxDepth))
 			foreach ($resultParents[$id_category] as $subcat)
-				$children[] = $this->getTree($resultParents, $resultIds, $subcat['id_category'], $currentDepth + 1);
+				$children[] = $this->getTree($resultParents, $resultIds, $maxDepth, $subcat['id_category'], $currentDepth + 1);
 		if (!isset($resultIds[$id_category]))
 			return false;
 		return array('id' => $id_category, 'link' => $link->getCategoryLink($id_category, $resultIds[$id_category]['link_rewrite']),
@@ -89,7 +87,7 @@ class BlockCategories extends Module
 
 	function hookLeftColumn($params)
 	{
-		global $smarty;
+		global $smarty, $cookie;
 
 		/*  ONLY FOR THEME OLDER THAN v1.0 */
 		global $link;
@@ -99,26 +97,48 @@ class BlockCategories extends Module
 		));
 		/* ELSE */
 		
-		$result = Db::getInstance()->ExecuteS('
-		SELECT * FROM '._DB_PREFIX_.'category c 
-		LEFT JOIN '._DB_PREFIX_.'category_lang cl ON (c.id_category = cl.id_category AND id_lang = '.intval($params['cookie']->id_lang).')
-		WHERE level_depth <= '.intval(Configuration::get('BLOCK_CATEG_MAX_DEPTH')).'
-		AND c.active = 1
-		ORDER BY level_depth, cl.name ASC');
+		$id_customer = intval($params['cookie']->id_customer);
+		$maxdepth = Configuration::get('BLOCK_CATEG_MAX_DEPTH');
+		
+		if (!$result = Db::getInstance()->ExecuteS('
+		SELECT DISTINCT c.*, cl.*
+		FROM `'._DB_PREFIX_.'category` c 
+		LEFT JOIN `'._DB_PREFIX_.'category_lang` cl ON (c.`id_category` = cl.`id_category` AND `id_lang` = '.intval($params['cookie']->id_lang).')
+		LEFT JOIN `'._DB_PREFIX_.'category_group` ctg ON (ctg.`id_category` = c.`id_category`)
+		'.($id_customer ? 'INNER JOIN `'._DB_PREFIX_.'customer_group` cg ON (cg.`id_group` = ctg.`id_group` AND cg.`id_customer` = '.intval($id_customer).')' : '' ).'
+		WHERE 1'
+		.(intval($maxdepth) != 0 ? ' AND `level_depth` <= '.intval($maxdepth) : '').'
+		AND (c.`active` = 1 OR c.`id_category`= 1)
+		'.(!$id_customer ? 'AND ctg.`id_group` = 1' : '' ).'
+		ORDER BY `level_depth` ASC, cl.`name` ASC'))
+			return;
 		$resultParents = array();
 		$resultIds = array();
+
 		foreach ($result as $row)
 		{
 			$$row['name'] = Category::hideCategoryPosition($row['name']);
 			$resultParents[$row['id_parent']][] = $row;
 			$resultIds[$row['id_category']] = $row;
 		}
-		$blockCategTree = $this->getTree($resultParents, $resultIds);
-				
+		$blockCategTree = $this->getTree($resultParents, $resultIds, Configuration::get('BLOCK_CATEG_MAX_DEPTH'));
 		$isDhtml = (Configuration::get('BLOCK_CATEG_DHTML') == 1 ? true : false);
 
 		if (isset($_GET['id_category']))
-			$smarty->assign('currentCategoryId', intval($_GET['id_category']));
+		{
+			$cookie->last_visited_category = intval($_GET['id_category']);
+			$smarty->assign('currentCategoryId', intval($_GET['id_category']));	
+		}
+		if (isset($_GET['id_product']))
+		{			
+			if (!isset($cookie->last_visited_category) OR !Product::idIsOnCategoryId(intval($_GET['id_product']), array('0' => array('id_category' => $cookie->last_visited_category))))
+			{
+				$product = new Product(intval($_GET['id_product']));
+				if (isset($product) AND Validate::isLoadedObject($product))
+					$cookie->last_visited_category = intval($product->id_category_default);
+			}
+			$smarty->assign('currentCategoryId', intval($cookie->last_visited_category));
+		}	
 		$smarty->assign('blockCategTree', $blockCategTree);
 		
 		if (file_exists(_PS_THEME_DIR_.'modules/blockcategories/blockcategories.tpl'))
@@ -127,7 +147,7 @@ class BlockCategories extends Module
 			$smarty->assign('branche_tpl_path', _PS_MODULE_DIR_.'blockcategories/category-tree-branch.tpl');
 		$smarty->assign('isDhtml', $isDhtml);
 		/* /ONLY FOR THEME OLDER THAN v1.0 */
-
+		
 		return $this->display(__FILE__, 'blockcategories.tpl');
 	}
 

@@ -1,8 +1,11 @@
 <?php
 
+/* SSL Management */
+$useSSL = true;
+
 include(dirname(__FILE__).'/../../config/config.inc.php');
 include(dirname(__FILE__).'/../../header.php');
-include(dirname(__FILE__).'/WishList.php');
+include_once(dirname(__FILE__).'/WishList.php');
 
 $errors = array();
 
@@ -13,7 +16,7 @@ if ($cookie->isLogged())
 	$delete = Tools::getIsset('deleted');
 	$delete = (empty($delete) === false ? 1 : 0);
 	$id_wishlist = Tools::getValue('id_wishlist');
-	if (Tools::isSubmit('submitWishlist'))
+	if (isset($_POST['submitWishlist']))
 	{
 		if (Configuration::get('PS_TOKEN_ACTIVATED') == 1 AND
 			strcmp(Tools::getToken(), Tools::getValue('token')))

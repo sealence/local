@@ -10,12 +10,10 @@ class BlockLink extends Module
 	{
 	 	$this->name = 'blocklink';
 	 	$this->tab = 'Blocks';
-	 	$this->version = '1.3';
+	 	$this->version = '1.4';
 
 	 	parent::__construct();
 
-	 	/* The parent construct is required for translations */
-		$this->page = basename(__FILE__, '.php');
         $this->displayName = $this->l('Link block');
         $this->description = $this->l('Adds a block with additional links');
 		$this->confirmUninstall = $this->l('Are you sure you want to delete all your links ?');
@@ -28,7 +26,7 @@ class BlockLink extends Module
 		$query = 'CREATE TABLE '._DB_PREFIX_.'blocklink (`id_link` int(2) NOT NULL AUTO_INCREMENT, `url` varchar(255) NOT NULL, new_window TINYINT(1) NOT NULL, PRIMARY KEY(`id_link`)) ENGINE=MyISAM default CHARSET=utf8';
 	 	if (!Db::getInstance()->Execute($query))
 	 		return false;
-	 	$query = 'CREATE TABLE '._DB_PREFIX_.'blocklink_lang (`id_link` int(2) NOT NULL, `id_lang` int(2) NOT NULL, `text` varchar(64) NOT NULL) ENGINE=MyISAM default CHARSET=utf8';
+	 	$query = 'CREATE TABLE '._DB_PREFIX_.'blocklink_lang (`id_link` int(2) NOT NULL, `id_lang` int(2) NOT NULL, `text` varchar(64) NOT NULL, PRIMARY KEY(`id_link`, `id_lang`)) ENGINE=MyISAM default CHARSET=utf8';
 	 	if (!Db::getInstance()->Execute($query))
 	 		return false;
 	 	return (Configuration::updateValue('PS_BLOCKLINK_TITLE', array('1' => 'Block link', '2' => 'Bloc lien')) AND Configuration::updateValue('PS_BLOCKLINK_TITLE', ''));
@@ -55,7 +53,7 @@ class BlockLink extends Module
 			'title' => Configuration::get('PS_BLOCKLINK_TITLE', $cookie->id_lang),
 			'url' => Configuration::get('PS_BLOCKLINK_URL'),
 			'lang' => 'text_'.$cookie->id_lang
-));
+		));
 	 	if (!$links)
 			return false;
 		return $this->display(__FILE__, 'blocklink.tpl');
@@ -79,7 +77,7 @@ class BlockLink extends Module
 			$result[$i]['url'] = $link['url'];
 			$result[$i]['newWindow'] = $link['new_window'];
 			/* Get multilingual text */
-			if (!$texts = Db::getInstance()->ExecuteS('SELECT `id_lang`, `text` FROM '._DB_PREFIX_.'blocklink_lang WHERE `id_link`='.$link['id_link']))
+			if (!$texts = Db::getInstance()->ExecuteS('SELECT `id_lang`, `text` FROM '._DB_PREFIX_.'blocklink_lang WHERE `id_link`='.intval($link['id_link'])))
 				return false;
 			foreach ($texts AS $text)
 				$result[$i]['text_'.$text['id_lang']] = $text['text'];
@@ -101,11 +99,11 @@ class BlockLink extends Module
 	 	foreach ($languages AS $language)
 	 	 	if (!empty($_POST['text_'.$language['id_lang']]))
 	 	 	{
-	 	 		if (!Db::getInstance()->Execute('INSERT INTO '._DB_PREFIX_.'blocklink_lang VALUES ('.$lastId.', '.$language['id_lang'].', \''.pSQL($_POST['text_'.$language['id_lang']]).'\')'))
+	 	 		if (!Db::getInstance()->Execute('INSERT INTO '._DB_PREFIX_.'blocklink_lang VALUES ('.intval($lastId).', '.intval($language['id_lang']).', \''.pSQL($_POST['text_'.$language['id_lang']]).'\')'))
 	 	 			return false;
 	 	 	}
 	 	 	else
-	 	 		if (!Db::getInstance()->Execute('INSERT INTO '._DB_PREFIX_.'blocklink_lang VALUES ('.$lastId.', '.$language['id_lang'].', \''.pSQL($_POST['text_'.$defaultLanguage]).'\')'))
+	 	 		if (!Db::getInstance()->Execute('INSERT INTO '._DB_PREFIX_.'blocklink_lang VALUES ('.intval($lastId).', '.intval($language['id_lang']).', \''.pSQL($_POST['text_'.$defaultLanguage]).'\')'))
 	 	 			return false;
 	 	return true;
 	}

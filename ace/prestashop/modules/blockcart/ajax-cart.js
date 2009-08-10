@@ -12,18 +12,18 @@ var ajaxCart = {
 		});
 		//for product page 'add' button...
 		$('body#product p#add_to_cart input').unbind('click').click(function(){
-			ajaxCart.add( $('#product_page_product_id').val(), $('#idCombination').val(), true, null, $('#quantity_wanted').val(), null, true);
+			ajaxCart.add( $('#product_page_product_id').val(), $('#idCombination').val(), true, null, $('#quantity_wanted').val(), null);
 			return false;
 		});
 	
 		//for 'delete' buttons in the cart block...
 		$('.ajax_cart_block_remove_link').unbind('click').click(function(){
-			/* Customized product management */
+			// Customized product management
 			var customizationId = 0;
 			var productId = 0;
 			var productAttributeId = 0;
 			if ($($(this).parent().parent()).attr('name') == 'customization')
-				/* Reverse two levels: a >> div >> li */
+				// Reverse two levels: a >> div >> li
 				var customizableProductDiv = $($(this).parent().parent()).find("div[@id^=deleteCustomizableProduct_]");
 			else
 				var customizableProductDiv = $($(this).parent()).find("div[@id^=deleteCustomizableProduct_]");
@@ -42,7 +42,7 @@ var ajaxCart = {
 				});
 			}
 
-			/* Common product management */
+			// Common product management
 			if (!customizationId)
 			{
 				//retrieve idProduct and idCombination from the displayed product in the block cart
@@ -54,13 +54,13 @@ var ajaxCart = {
 					productAttributeId = parseInt(ids[1]);
 			}
 
-			/* Removing product from the cart */
+			// Removing product from the cart
 			ajaxCart.remove(productId, productAttributeId, customizationId);
 			return false;
 		});
 	},
 	
-	//try to expand the cart
+	// try to expand the cart
 	expand : function(){
 		if ($('#cart_block #cart_block_list').hasClass('collapsed'))
 		{
@@ -71,12 +71,12 @@ var ajaxCart = {
 					complete: function(){$(this).addClass('expanded').removeClass('collapsed');}
 				});
 			});
-			//toogle the button expand/collapse button
+			// toogle the button expand/collapse button
 			$('#cart_block h4 span#block_cart_expand').fadeOut('slow', function(){
 				$('#cart_block h4 span#block_cart_collapse').fadeIn('fast');
 			});
 			
-			//save the expand statut in the user cookie
+			// save the expand statut in the user cookie
 			$.ajax({
 				type: 'GET',
 				url: baseDir + 'modules/blockcart/blockcart-set-collapse.php',
@@ -88,7 +88,27 @@ var ajaxCart = {
 		}
 	},
 	
-	//try to collapse the cart
+	// cart to fix display when using back and previous browsers buttons
+	refresh : function(){
+		//send the ajax request to the server
+		$.ajax({
+			type: 'GET',
+			url: baseDir + 'cart.php',
+			async: true,
+			cache: false,
+			dataType : "json",
+			data: 'ajax=true&token=' + static_token,
+			success: function(jsonData)
+			{
+				ajaxCart.updateCart(jsonData)
+			},
+			error: function(XMLHttpRequest, textStatus, errorThrown) {
+				//alert("TECHNICAL ERROR: unable to refresh the cart.\n\nDetails:\nError thrown: " + XMLHttpRequest + "\n" + 'Text status: ' + textStatus);
+			}
+		});
+	},
+	
+	// try to collapse the cart
 	collapse : function(){
 		
 		if ($('#cart_block #cart_block_list').hasClass('expanded'))
@@ -103,7 +123,7 @@ var ajaxCart = {
 				$('#cart_block h4 span#block_cart_expand').fadeIn('fast');
 			});
 			
-			//save the expand statut in the user cookie
+			// save the expand statut in the user cookie
 			$.ajax({
 				type: 'GET',
 				url: baseDir + 'modules/blockcart/blockcart-set-collapse.php',
@@ -113,13 +133,23 @@ var ajaxCart = {
 		}
 	},
 	
-	//add a product in the cart via ajax
-	add : function(idProduct, idCombination, addedFromProductPage, callerElement, quantity, whishlist, isProductPage){
-		if (isProductPage && !checkCustomizations())
+	// add a product in the cart via ajax
+	add : function(idProduct, idCombination, addedFromProductPage, callerElement, quantity, whishlist){
+		if (addedFromProductPage && !checkCustomizations())
 		{
 			alert(fieldRequired);
 			return ;
 		}
+		
+		//disabled the button when adding to do not double add if user double click
+		if (addedFromProductPage)
+		{
+			$('body#product p#add_to_cart input').attr('disabled', 'disabled').removeClass('exclusive').addClass('exclusive_disabled');
+			$('.filled').removeClass('filled');
+		}
+		else
+			$('.ajax_add_to_cart_button').attr('disabled', 'disabled');
+		
 		//send the ajax request to the server
 		$.ajax({
 			type: 'GET',
@@ -145,10 +175,24 @@ var ajaxCart = {
 							to: $('#cart_block').get(0),
 							className:'transferProduct',
 							duration: 800,
-							complete: function () {ajaxCart.updateCart(jsonData)}
+							complete: function () {
+								ajaxCart.updateCart(jsonData);
+								//reactive the button when adding has finished
+								if (addedFromProductPage)
+									$('body#product p#add_to_cart input').removeAttr('disabled').addClass('exclusive').removeClass('exclusive_disabled');
+								else
+									$('.ajax_add_to_cart_button').removeAttr('disabled');
+							}
 				});
 			},
-			error: function(XMLHttpRequest, textStatus, errorThrown) {alert("TECHNICAL ERROR: unable to add the product.\n\nDetails:\nError thrown: " + XMLHttpRequest + "\n" + 'Text status: ' + textStatus);}
+			error: function(XMLHttpRequest, textStatus, errorThrown) {
+				alert("TECHNICAL ERROR: unable to add the product.\n\nDetails:\nError thrown: " + XMLHttpRequest + "\n" + 'Text status: ' + textStatus);
+				//reactive the button when adding has finished
+				if (addedFromProductPage)
+					$('body#product p#add_to_cart input').removeAttr('disabled').addClass('exclusive').removeClass('exclusive_disabled');
+				else
+					$('.ajax_add_to_cart_button').removeAttr('disabled');
+			}
 		});
 	},
 	
@@ -161,9 +205,9 @@ var ajaxCart = {
 			async: true,
 			cache: false,
 			dataType : "json",
-			data: 'ajax=true' + ((customizationId && customizationId != null) ? '&deleteCustomizableProduct=' + customizationId + '&add&op=down' : '&delete') + '&qty=1&id_product=' + idProduct + '&token=' + static_token + ( (idCombination != null && parseInt(idCombination)) ? '&ipa=' + idCombination : ''),
+			data: 'delete' + '&id_product=' + idProduct + '&ipa=' + ((idCombination != null && parseInt(idCombination)) ? idCombination : '') + ((customizationId && customizationId != null) ? '&id_customization=' + customizationId : '') + '&token=' + static_token + '&ajax=true',
 			success: function(jsonData)	{ ajaxCart.updateCart(jsonData) },
-			error: function() {alert('ERROR : unable to delete the product');}
+			error: function() {alert('ERROR: unable to delete the product');}
 		});
 	},
 	
@@ -173,6 +217,8 @@ var ajaxCart = {
 		if($('#cart_block #cart_block_list dl.products').length > 0)
 		{
 			var removedProductId = null;
+			var removedProductData = null;
+			var removedProductDomId = null;
 			//look for a product to delete...
 			$('#cart_block_list dl.products dt').each(function(){
 				//retrieve idProduct and idCombination from the displayed product in the block cart
@@ -186,24 +232,19 @@ var ajaxCart = {
 				{
 					//we've called the variable aProduct because IE6 bug if this variable is called product
 					//if product has attributes
-					if (ids[1])
+					if (jsonData.products[aProduct]['id'] == ids[0] && (!ids[1] || jsonData.products[aProduct]['idCombination'] == ids[1]))
 					{
-						if (jsonData.products[aProduct]['id'] == ids[0] && jsonData.products[aProduct]['idCombination'] == ids[1]) 
-						{
-							stayInTheCart = true;
-							ajaxCart.hideOldProductCustomizations(jsonData.products[aProduct], domIdProduct);
-						}
+						stayInTheCart = true;
+						// update the product customization display (when the product is still in the cart)
+						ajaxCart.hideOldProductCustomizations(jsonData.products[aProduct], domIdProduct);
 					}
-					else 
-						if (jsonData.products[aProduct]['id'] == ids[0])
-						{
-							stayInTheCart = true;
-							ajaxCart.hideOldProductCustomizations(jsonData.products[aProduct], domIdProduct);
-						}
 				}
 				//remove product if it's no more in the cart
 				if(!stayInTheCart)
+				{
 					removedProductId = $(this).attr('id');
+					//return false; // Regarding that the customer can only remove products one by one, we break the loop
+				}
 			});
 			
 			//if there is a removed product, delete it from the displayed block cart
@@ -211,11 +252,11 @@ var ajaxCart = {
 			{
 				var firstCut =  removedProductId.replace('cart_block_product_', '');
 				var ids = firstCut.split('_');
-				
+
 				$('#'+removedProductId).addClass('strike').fadeTo('slow', 0, function(){
 					$(this).slideUp('slow', function(){
 						$(this).remove();
-						///if the cart is now empty, show the 'no product in the cart' message
+						//if the cart is now empty, show the 'no product in the cart' message
 						if($('#cart_block dl.products dt').length == 0)
 						{
 							$('p#cart_block_no_products:hidden').slideDown('fast');
@@ -264,7 +305,7 @@ var ajaxCart = {
 			if (this.customizationId == customizationId)
 			{
 				exists = true;
-				/* This return does not mean that we found nothing but simply break the loop */
+				// This return does not mean that we found nothing but simply break the loop
 				return false;
 			}
 		});
@@ -280,6 +321,8 @@ var ajaxCart = {
 					$('#bloc_cart_voucher_' + this.id + ' td.price').text(this.price);
 			}
 		});
+		if (jsonData.discounts.length == 0)
+			$('#vouchers').remove();
 	},
 
 	// Update product quantity
@@ -333,18 +376,17 @@ var ajaxCart = {
 					if (this.hasAttributes) content += '</dd>';
 
 					$('#cart_block dl.products').append(content);
-					$('#cart_block dl.products .hidden').slideDown('slow').removeClass('hidden');
 				}
 				//else update the product's line
 				else{
 					var jsonProduct = this;
 					if($('dt#cart_block_product_' + domIdProduct + ' .quantity').text() != jsonProduct.quantity)
 					{
-						/* Usual product */
+						// Usual product
 						$('dt#cart_block_product_' + domIdProduct + ' .price').text(jsonProduct.priceByLine);
 						ajaxCart.updateProductQuantity(jsonProduct, jsonProduct.quantity);
 
-						/* Customized product */
+						// Customized product
 						if (jsonProduct.hasCustomizedDatas)
 						{
 							customizationFormatedDatas = ajaxCart.displayNewCustomizedDatas(jsonProduct);
@@ -353,13 +395,14 @@ var ajaxCart = {
 								if (jsonProduct.hasAttributes)
 									$('#cart_block dd#cart_block_combination_of_' + domIdProduct).append(customizationFormatedDatas);
 								else
-									$('#cart_block dt#cart_block_product_' + domIdProduct).append(customizationFormatedDatas);
+									$('#cart_block dl.products').append(customizationFormatedDatas);
 							}
 							else
 								$('#cart_block ul#customization_' + domIdProductAttribute).append(customizationFormatedDatas);
 						}
 					}
 				}
+				$('#cart_block dl.products .hidden').slideDown('slow').removeClass('hidden');
 
 			var removeLinks = $('#cart_block_product_' + domIdProduct).find('a.ajax_cart_block_remove_link');
 			if (this.hasCustomizedDatas && removeLinks.length)
@@ -379,7 +422,7 @@ var ajaxCart = {
 
 		if (!hasAlreadyCustomizations)
 		{
-			if (!product.hasAttributes) content += '<dd class="hidden">';
+			if (!product.hasAttributes) content += '<dd id="cart_block_combination_of_' + productId + '" class="hidden">';
 			content += '<ul class="cart_block_customizations" id="customization_' + productId + '_' + productAttributeId + '">';
 		}
 
@@ -387,12 +430,12 @@ var ajaxCart = {
 			var done = 0;
 			customizationId = parseInt(this.customizationId);
 			productAttributeId = typeof(product.idCombination) == 'undefined' ? 0 : parseInt(product.idCombination);
-			/* If the customization is already displayed on the cart, no update's needed */
+			// If the customization is already displayed on the cart, no update's needed
 			if($('#cart_block').find("div[@id^=deleteCustomizableProduct_" + customizationId + "_]").length)
 				return ('');
 			content += '<li name="customization"><div class="deleteCustomizableProduct" id="deleteCustomizableProduct_' + customizationId + '_' + productId + '_' + (productAttributeId ?  productAttributeId : '0') + '"><a class="ajax_cart_block_remove_link" href="' + baseDir + 'cart.php?delete&amp;id_product=' + productId + '&amp;ipa=' + productAttributeId + '&amp;id_customization=' + customizationId + '&amp;token=' + static_token + '"> </a></div><span class="quantity-formated"><span class="quantity">' + parseInt(this.quantity) + '</span>x</span>';
 
-			/* Give to the customized product the first textfield value as name */
+			// Give to the customized product the first textfield value as name
 			$(this.datas).each(function(){
 				if (this['type'] == CUSTOMIZE_TEXTFIELD)
 				{
@@ -407,12 +450,12 @@ var ajaxCart = {
 				}
 			});
 
-			/* If the customized product did not have any textfield, it will have the customizationId as name */
+			// If the customized product did not have any textfield, it will have the customizationId as name
 			if (!done)
 				content += customizationIdMessage + customizationId;
 			if (!hasAlreadyCustomizations) content += '</li>';
 
-			/* Field cleaning */
+			// Field cleaning
 			if (customizationId)
 			{
 				$('#uploadable_files li div.customizationUploadBrowse img').remove();
@@ -499,8 +542,8 @@ $(document).ready(function(){
 			ajaxCart.collapse();
 	});
 	$('#block_cart_expand').click(function(){
-			ajaxCart.expand();		
+			ajaxCart.expand();
 	});
 	ajaxCart.overrideButtonsInThePage();
-	
+	ajaxCart.refresh();
 });

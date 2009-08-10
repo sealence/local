@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -75,16 +75,13 @@ class Tools
 	*/
 	static public function getValue($key, $defaultValue = false)
 	{
-		global $cookie;
-
 	 	if (!isset($key) OR empty($key) OR !is_string($key))
 			return false;
 		$ret = (isset($_POST[$key]) ? $_POST[$key] : (isset($_GET[$key]) ? $_GET[$key] : $defaultValue));
 
 		if (is_string($ret) === true)
 			$ret = urldecode(preg_replace('/((\%5C0+)|(\%00+))/i', '', urlencode($ret)));
-
-		return is_array($ret) ? $ret : stripslashes($ret);
+		return !is_string($ret)? $ret : stripslashes($ret);
 	}
 
 	static public function getIsset($key)
@@ -112,7 +109,7 @@ class Tools
 		/* Automatically detect language if not already defined */
 		if (!$cookie->id_lang AND isset($_SERVER['HTTP_ACCEPT_LANGUAGE']))
 		{
-			$array = split(',', Tools::strtolower($_SERVER['HTTP_ACCEPT_LANGUAGE']));
+			$array = explode(',', Tools::strtolower($_SERVER['HTTP_ACCEPT_LANGUAGE']));
 			if (Validate::isLanguageIsoCode($array[0]))
 			{
 				$lang = new Language(intval(Language::getIdByIso(strval($array[0]))));
@@ -136,28 +133,8 @@ class Tools
 	{
 		global $cookie;
 		
-		/* Language switching */
 		if ($id_lang = intval(Tools::getValue('id_lang')) AND Validate::isUnsignedId($id_lang))
-		{
 			$cookie->id_lang = $id_lang;
-			$cookie->update();
-			$link = new Link();
-			if ($id_product = intval(Tools::getValue('id_product')) AND !isset($_GET['adminlang']))
-				$url = $link->getProductLink(new Product($id_product, false, $id_lang));
-			elseif ($id_category = intval(Tools::getValue('id_category')) AND !isset($_GET['adminlang']))
-				$url = $link->getCategoryLink(new Category($id_category, $id_lang));
-			elseif ($id_cms = intval(Tools::getValue('id_cms')) AND !isset($_GET['adminlang']))
-				$url = $link->getCMSLink(new CMS($id_cms, $id_lang));
-			else
-			{
-				$n = 0;
-				$url = $_SERVER['PHP_SELF'];
-				unset($_GET['id_lang'], $_GET['adminlang']);
-				foreach ($_GET AS $k => $value)
-					$url .= ((!$n++) ? '?' : '&').urlencode(stripslashes($k)).'='.urlencode(stripslashes($value));
-			}
-			Tools::redirectLink($url);
-		}
 	}
 
 	static public function setCurrency()
@@ -306,11 +283,18 @@ class Tools
 		return $string;
 	}
 
-	static public function htmlentitiesUTF8($string)
+	static public function htmlentitiesUTF8($string, $type = ENT_QUOTES)
 	{
 		if (is_array($string))
 			return array_map(array('Tools', 'htmlentitiesUTF8'), $string);
-		return htmlentities($string, ENT_QUOTES, 'utf-8'); 
+		return htmlentities($string, $type, 'utf-8'); 
+	}
+
+	static public function htmlentitiesDecodeUTF8($string)
+	{
+		if (is_array($string))
+			return array_map(array('Tools', 'htmlentitiesDecodeUTF8'), $string);
+		return html_entity_decode($string, ENT_QUOTES, 'utf-8'); 
 	}
 
 	static public function safePostVars()
@@ -412,7 +396,7 @@ class Tools
 	{
 		global $maintenance;
 
-		if (!$maintenance)
+		if (!(isset($maintenance) AND (!isset($_SERVER['REMOTE_ADDR']) OR $_SERVER['REMOTE_ADDR'] != Configuration::get('PS_MAINTENANCE_IP'))))
 		{
 		 	/* Products specifics meta tags */
 			if ($id_product = Tools::getValue('id_product'))
@@ -443,7 +427,32 @@ class Tools
 					return self::completeMetaTags($row, Category::hideCategoryPosition($row['name']));
 				}
 			}
-
+			elseif ($id_manufacturer = Tools::getValue('id_manufacturer'))
+			{
+				$row = Db::getInstance()->getRow('
+				SELECT `meta_title`, `meta_description`, `meta_keywords`
+				FROM `'._DB_PREFIX_.'manufacturer_lang`
+				WHERE id_lang = '.intval($id_lang).' AND id_manufacturer = '.intval($id_manufacturer));
+				if ($row)
+				{
+					if (empty($row['meta_description']))
+						$row['meta_description'] = strip_tags($row['meta_description']);
+					return self::completeMetaTags($row, $row['meta_title']);
+				}
+			}
+			elseif ($id_supplier = Tools::getValue('id_supplier'))
+			{
+				$row = Db::getInstance()->getRow('
+				SELECT `meta_title`, `meta_description`, `meta_keywords`
+				FROM `'._DB_PREFIX_.'supplier_lang`
+				WHERE id_lang = '.intval($id_lang).' AND id_supplier = '.intval($id_supplier));
+				if ($row)
+				{
+					if (empty($row['meta_description']))
+						$row['meta_description'] = strip_tags($row['meta_description']);
+					return self::completeMetaTags($row, $row['meta_title']);
+				}
+			}			
 			/* CMS specifics meta tags */
 			elseif ($id_cms = Tools::getValue('id_cms'))
 			{
@@ -534,7 +543,7 @@ class Tools
 	* @param integer category id
 	* @param string finish of the path
 	*/
-	static public function getPath($id_category, $path = '')
+	static public function getPath($id_category, $path = '', $linkOntheLastItem = false)
 	{
 		global $link, $cookie;
 		$category = new Category(intval($id_category), intval($cookie->id_lang));
@@ -544,9 +553,25 @@ class Tools
 			return '<span class="navigation_end">'.$path.'</span>';
 		$pipe = (Configuration::get('PS_NAVIGATION_PIPE') ? Configuration::get('PS_NAVIGATION_PIPE') : '>');
 		$category_name = Category::hideCategoryPosition($category->name);
+		// htmlentitiezed because this method generates some view
 		if ($path != $category_name)
-			$path = '<a href="'.Tools::safeOutput($link->getCategoryLink($category)).'">'.$category_name.'</a> '.$pipe.' '.$path;
+			$path = '<a href="'.Tools::safeOutput($link->getCategoryLink($category)).'">'.htmlentities($category_name, ENT_NOQUOTES, 'UTF-8').'</a> '.$pipe.' '.$path;
+		else
+			$path = ($linkOntheLastItem ? '<a href="'.Tools::safeOutput($link->getCategoryLink($category)).'">' : '').htmlentities($path, ENT_NOQUOTES, 'UTF-8').($linkOntheLastItem ? '</a>' : '');
 		return Tools::getPath(intval($category->id_parent), $path);
+	}
+
+	static public function getFullPath($id_category, $end)
+	{
+		global $cookie;
+
+		$pipe = (Configuration::get('PS_NAVIGATION_PIPE') ? Configuration::get('PS_NAVIGATION_PIPE') : '>');
+		$category = new Category(intval($id_category), intval($cookie->id_lang));
+		if (!Validate::isLoadedObject($category))
+			die(Tools::displayError());
+		if ($id_category == 1)
+			return htmlentities($end, ENT_NOQUOTES, 'UTF-8');
+		return self::getPath($id_category, Category::hideCategoryPosition($category->name), true).' '.$pipe.' '.htmlentities($end, ENT_NOQUOTES, 'UTF-8');
 	}
 
 	/**
@@ -632,7 +657,7 @@ class Tools
 			elseif ($char == ' ')
 				$purified .= '-';
 		}
-		return $purified;
+		return trim(self::strtolower($purified));
 	}
 
 	/**
@@ -711,6 +736,8 @@ class Tools
 
 	static function strtolower($str)
 	{
+		if (is_array($str))
+			return false;
 		if (function_exists('mb_strtolower'))
 			return mb_strtolower($str, 'utf-8');
 		return strtolower($str);
@@ -718,13 +745,24 @@ class Tools
 
 	static function strlen($str)
 	{
+		if (is_array($str))
+			return false;
 		if (function_exists('mb_strlen'))
 			return mb_strlen($str, 'utf-8');
 		return strlen($str);
 	}
 
+	static function stripslashes($string)
+	{
+		if (_PS_MAGIC_QUOTES_GPC_)
+			$string = stripslashes($string);
+		return $string;
+	}
+
 	static function strtoupper($str)
 	{
+		if (is_array($str))
+			return false;
 		if (function_exists('mb_strtoupper'))
 			return mb_strtoupper($str, 'utf-8');
 		return strtoupper($str);
@@ -732,8 +770,10 @@ class Tools
 
 	static function substr($str, $start, $length = false, $encoding = 'utf-8')
 	{
+		if (is_array($str))
+			return false;
 		if (function_exists('mb_substr'))
-			return mb_substr($str, $start, ($length === false ? Tools::strlen($str) : $length), $encoding);
+			return mb_substr($str, intval($start), ($length === false ? Tools::strlen($str) : intval($length)), $encoding);
 		return substr($str, $start, $length);
 	}
 
@@ -742,52 +782,89 @@ class Tools
 		return self::strtoupper(Tools::substr($str, 0, 1)).Tools::substr($str, 1);
 	}
 	
-	
 	static public function orderbyPrice(&$array, $orderWay)
 	{
 		foreach($array as &$row)
 			$row['price_tmp'] =  Product::getPriceStatic($row['id_product'], true, ((isset($row['id_product_attribute']) AND !empty($row['id_product_attribute'])) ? intval($row['id_product_attribute']) : NULL), 2);
 		if(strtolower($orderWay) == 'desc')
-			uasort($array,"Tools::cmpPriceDesc");
+			uasort($array, 'cmpPriceDesc');
 		else
-			uasort($array,"Tools::cmpPriceAsc");
+			uasort($array, 'cmpPriceAsc');
 		foreach($array as &$row)
 			unset($row['price_tmp']);
-	}
-	
-		/**
-	 * Compare 2 price to sort Categories by price
-	 *
-	 * @param integer $a
-	 * @param integer $b 
-	 * @return bool 
-	 */
-
-	static public function cmpPriceDesc($a,$b)
-	{
-	    if ($a['price_tmp'] < $b['price_tmp'])
-			return (1);
-		elseif ($a['price_tmp'] > $b['price_tmp'])
-			return (-1);
-		return (0);
-	}
-
-	static public function cmpPriceAsc($a,$b)
-	{
-	    if ($a['price_tmp'] < $b['price_tmp'])
-			return (-1);
-		elseif ($a['price_tmp'] > $b['price_tmp'])
-			return (1);
-		return (0);
 	}
 
 	static public function iconv($from, $to, $string)
 	{
-	    $converted = htmlentities($string, ENT_NOQUOTES, $from);
-	    $converted = html_entity_decode($converted, ENT_NOQUOTES, $to);
-	    return $converted;
+		if (function_exists('iconv'))
+			return iconv($from, $to.'//TRANSLIT', str_replace('¥', '&yen;', str_replace('£', '&pound;', str_replace('€', '&euro;', $string))));
+		return html_entity_decode(htmlentities($string, ENT_NOQUOTES, $from), ENT_NOQUOTES, $to);
 	}
 
+	static public function isEmpty($field)
+	{
+		return $field === '' OR $field === NULL;
+	}
+	
+	static public function getTimezones($select = false)
+	{
+		static $_cache = 0;
+
+		// One select
+		if ($select)
+		{
+			// No cache
+			if (!$_cache)
+			{
+				$tmz = Db::getInstance()->getRow('SELECT `name` FROM '._DB_PREFIX_.'timezone WHERE id_timezone = '.intval($select));
+				$_cache = $tmz['name'];
+			}
+			return $_cache;
+		}
+
+		// Multiple select
+		$tmz = Db::getInstance()->s('SELECT * FROM '._DB_PREFIX_.'timezone');
+		$tab = array();
+		foreach ($tmz as $timezone)
+			$tab[$timezone['id_timezone']] = str_replace('_', ' ', $timezone['name']);
+		return $tab;
+	}
+
+	/**
+	* DEPRECATED FUNCTION
+	* DO NOT USE IT
+	**/
+	static public function ps_set_magic_quotes_runtime($var)
+	{
+		if (function_exists('set_magic_quotes_runtime'))
+			@set_magic_quotes_runtime($var);
+	}
+}
+
+/**
+* Compare 2 prices to sort products
+*
+* @param float $a
+* @param float $b 
+* @return integer 
+*/
+/* Externalized because of a bug in PHP 5.1.6 when inside an object */
+function cmpPriceAsc($a,$b)
+{
+	if (floatval($a['price_tmp']) < floatval($b['price_tmp']))
+		return (-1);
+	elseif (floatval($a['price_tmp']) > floatval($b['price_tmp']))
+		return (1);
+	return (0);
+}
+
+function cmpPriceDesc($a,$b)
+{
+	if (floatval($a['price_tmp']) < floatval($b['price_tmp']))
+		return (1);
+	elseif (floatval($a['price_tmp']) > floatval($b['price_tmp']))
+		return (-1);
+	return (0);
 }
 
 ?>

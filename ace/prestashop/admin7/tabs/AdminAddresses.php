@@ -7,7 +7,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -45,8 +45,8 @@ class AdminAddresses extends AdminTab
 
 		$this->fieldsDisplay = array(
 		'id_address' => array('title' => $this->l('ID'), 'align' => 'center', 'width' => 25),
-		'firstname' => array('title' => $this->l('First name'), 'width' => 80),
-		'lastname' => array('title' => $this->l('Last name'), 'width' => 100, 'filter_key' => 'a!name'),
+		'firstname' => array('title' => $this->l('First name'), 'width' => 80, 'filter_key' => 'a!firstname'),
+		'lastname' => array('title' => $this->l('Last name'), 'width' => 100, 'filter_key' => 'a!lastname'),
 		'address1' => array('title' => $this->l('Address'), 'width' => 200),
 		'postcode' => array('title' => $this->l('Post/Zip code'), 'align' => 'right', 'width' => 50),
 		'city' => array('title' => $this->l('City'), 'width' => 150),
@@ -54,12 +54,12 @@ class AdminAddresses extends AdminTab
 
 		parent::__construct();
 	}
-	
+
 	public function postProcess()
 	{
 		if (isset($_POST['submitAdd'.$this->table]))
 		{
-			/* Transform e-mail in id_customer for parent processing */
+			// Transform e-mail in id_customer for parent processing
 			if ($this->addressType == 'customer')
 			{
 				if (Validate::isEmail(Tools::getValue('email')))
@@ -71,12 +71,20 @@ class AdminAddresses extends AdminTab
 					else
 						$this->_errors[] = Tools::displayError('this e-mail address is not registered');
 				}
+				elseif ($id_customer = Tools::getValue('id_customer'))
+				{
+					$customer = new Customer(intval($id_customer));
+					if (Validate::isLoadedObject($customer))
+						$_POST['id_customer'] = $customer->id;
+					else
+						$this->_errors[] = Tools::displayError('unknown customer');
+				}
 				else
-					$this->_errors[] = Tools::displayError('customer e-mail address is not valid');
+					$this->_errors[] = Tools::displayError('unknown customer');
 			}
-			
+
 			// Check manufacturer selected
-			elseif ($this->addressType == 'manufacturer')
+			if ($this->addressType == 'manufacturer')
 			{
 				$manufacturer = new Manufacturer(intval(Tools::getValue('id_manufacturer')));
 				if (!Validate::isLoadedObject($manufacturer))
@@ -103,7 +111,7 @@ class AdminAddresses extends AdminTab
 		}
 		if (!sizeof($this->_errors))
 			parent::postProcess();
-			
+
 		/* Reassignation of the order's new (invoice or delivery) address */
 		$address_type = (intval(Tools::getValue('address_type')) == 2 ? 'invoice' : (intval(Tools::getValue('address_type')) == 1 ? 'delivery' : ''));
 		if (isset($_POST['submitAdd'.$this->table]) AND ($id_order = intval(Tools::getValue('id_order'))) AND !sizeof($this->_errors) AND !empty($address_type))
@@ -182,15 +190,9 @@ class AdminAddresses extends AdminTab
 	
 	public function displayForm()
 	{
-		global $currentIndex;
+		global $currentIndex, $cookie;
 		$obj = $this->loadObject(true);
-		/* Get customer e-mail by id_customer */
-		if ($obj->id AND !Tools::getValue('email'))
-		{
-			$customer = new Customer($obj->id_customer);
-			$_POST['email'] = $customer->email;
-		}
-		
+
 		echo '
 		<form action="'.$currentIndex.'&submitAdd'.$this->table.'=1&token='.$this->token.'" method="post" class="width2">
 		'.(intval($obj->id) ? '<input type="hidden" name="id_'.$this->table.'" value="'.intval($obj->id).'" />' : '').'
@@ -215,11 +217,24 @@ class AdminAddresses extends AdminTab
 				break;
 			case 'customer':
 			default:
-				echo	'<label>'.$this->l('Customer e-mail:').'</label>
-				<div class="margin-form">
-					<input type="text" size="33" name="email" value="'.htmlentities(Tools::getValue('email'), ENT_COMPAT, 'UTF-8').'" style="text-transform: lowercase;" /> <sup>*</sup>
-				</div>
-				<label>'.$this->l('Alias:').'</label>
+				if ($obj->id)
+				{
+					$customer = new Customer($obj->id_customer);
+					$tokenCustomer = Tools::getAdminToken('AdminCustomers'.intval(Tab::getIdFromClassName('AdminCustomers')).intval($cookie->id_employee));
+					echo '
+					<label>'.$this->l('Customer:').'</label>
+					<div class="margin-form"><a style="display: block; padding-top: 4px;" href="?tab=AdminCustomers&id_customer='.$customer->id.'&viewcustomer&token='.$tokenCustomer.'">'.$customer->lastname.' '.$customer->firstname.' ('.$customer->email.')</a></div>
+					<input type="hidden" name="id_customer" value="'.$customer->id.'" />';
+				}
+				else
+				{
+					echo
+					'<label>'.$this->l('Customer e-mail:').'</label>
+					<div class="margin-form">
+						<input type="text" size="33" name="email" value="'.htmlentities(Tools::getValue('email'), ENT_COMPAT, 'UTF-8').'" style="text-transform: lowercase;" /> <sup>*</sup>
+					</div>';
+				}
+				echo '<label>'.$this->l('Alias:').'</label>
 				<div class="margin-form">
 					<input type="text" size="33" name="alias" value="'.htmlentities($this->getFieldValue($obj, 'alias'), ENT_COMPAT, 'UTF-8').'" /> <sup>*</sup>
 					<span class="hint" name="help_box">'.$this->l('Invalid characters:').' <>;=#{}<span class="hint-pointer">&nbsp;</span></span>
@@ -264,8 +279,9 @@ class AdminAddresses extends AdminTab
 				<label>'.$this->l('Country:').'</label>
 				<div class="margin-form">
 					<select name="id_country" />';
+		$selectedCountry = $this->getFieldValue($obj, 'id_country');
 		foreach ($this->countriesArray AS $id_country => $name)
-			echo '		<option value="'.$id_country.'"'.(($this->getFieldValue($obj, 'id_country') == $id_country) ? ' selected="selected"' : ((Configuration::get('PS_COUNTRY_DEFAULT')) == $id_country) ? ' selected="selected"' : '').'>'.$name.'</option>';
+			echo '		<option value="'.$id_country.'"'.((!$selectedCountry AND Configuration::get('PS_COUNTRY_DEFAULT') == $id_country) ? ' selected="selected"' : ($selectedCountry == $id_country ? ' selected="selected"' : '')).'>'.$name.'</option>';
 		echo '		</select> <sup>*</sup>
 				</div>
 				<label>'.$this->l('State:').'</label>

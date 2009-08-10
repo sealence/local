@@ -7,7 +7,7 @@
   * @author Damien Metzger / Epitech
   * @copyright Epitech / PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   */
   
 class Connection extends ObjectModel
@@ -28,7 +28,6 @@ class Connection extends ObjectModel
 	public $date_add;
 
 	protected	$fieldsRequired = array ('id_guest', 'id_page');	
-	protected	$fieldsSize = array ('http_referer' => 256);	
 	protected	$fieldsValidate = array ('id_guest' => 'isUnsignedId', 'id_page' => 'isUnsignedId',
 										 'ip_address' => 'isInt', 'http_referer' => 'isAbsoluteUrl');
 
@@ -42,7 +41,8 @@ class Connection extends ObjectModel
 		$fields['id_guest'] = intval($this->id_guest);
 		$fields['id_page'] = intval($this->id_page);
 		$fields['ip_address'] = intval($this->ip_address);
-		$fields['http_referer'] = pSQL($this->http_referer);
+		if (Validate::isAbsoluteUrl($this->http_referer))
+			$fields['http_referer'] = pSQL($this->http_referer);
 		$fields['date_add'] = pSQL($this->date_add);
 		return $fields;
 	}
@@ -88,7 +88,8 @@ class Connection extends ObjectModel
 			$connection->id_guest = intval($cookie->id_guest);
 			$connection->id_page = Page::getCurrentId();
 			$connection->ip_address = isset($_SERVER['REMOTE_ADDR']) ? ip2long($_SERVER['REMOTE_ADDR']) : '';
-			$connection->http_referer = $referer;
+			if (Validate::isAbsoluteUrl($referer))
+				$connection->http_referer = $referer;
 			$connection->add();
 			$cookie->id_connections = $connection->id;
 			return $connection->id_page;

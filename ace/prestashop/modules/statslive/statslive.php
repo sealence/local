@@ -7,7 +7,7 @@
   * @author Damien Metzger / Epitech
   * @copyright Epitech / PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   */
   
 class StatsLive extends Module
@@ -17,7 +17,6 @@ class StatsLive extends Module
         $this->name = 'statslive';
         $this->tab = 'Stats';
         $this->version = 1.0;
-		$this->page = basename(__FILE__, '.php');
 		
         parent::__construct();
 		
@@ -33,27 +32,33 @@ class StatsLive extends Module
 	private function getCustomersOnline()
 	{
 		return Db::getInstance()->ExecuteS('
-		SELECT u.id_customer, u.firstname, u.lastname
+		SELECT u.id_customer, u.firstname, u.lastname, pt.name as page
 		FROM `'._DB_PREFIX_.'connections` c
 		LEFT JOIN `'._DB_PREFIX_.'connections_page` cp ON c.id_connections = cp.id_connections
+		LEFT JOIN `'._DB_PREFIX_.'page` p ON p.id_page = cp.id_page
+		LEFT JOIN `'._DB_PREFIX_.'page_type` pt ON p.id_page_type = pt.id_page_type
 		INNER JOIN `'._DB_PREFIX_.'guest` g ON c.id_guest = g.id_guest
 		INNER JOIN `'._DB_PREFIX_.'customer` u ON u.id_customer = g.id_customer
 		WHERE cp.`time_end` IS NULL
 		AND TIME_TO_SEC(TIMEDIFF(NOW(), cp.`time_start`)) < 900
-		GROUP BY c.id_connections');
+		GROUP BY c.id_connections
+		ORDER BY u.firstname, u.lastname');
 	}
 	
 	private function getVisitorsOnline()
 	{
 		return Db::getInstance()->ExecuteS('
-		SELECT c.id_guest, c.ip_address, c.date_add, c.http_referer
+		SELECT c.id_guest, c.ip_address, c.date_add, c.http_referer, pt.name as page
 		FROM `'._DB_PREFIX_.'connections` c
 		LEFT JOIN `'._DB_PREFIX_.'connections_page` cp ON c.id_connections = cp.id_connections
+		LEFT JOIN `'._DB_PREFIX_.'page` p ON p.id_page = cp.id_page
+		LEFT JOIN `'._DB_PREFIX_.'page_type` pt ON p.id_page_type = pt.id_page_type
 		INNER JOIN `'._DB_PREFIX_.'guest` g ON c.id_guest = g.id_guest
 		WHERE (g.id_customer IS NULL OR g.id_customer = 0)
 		AND cp.`time_end` IS NULL
 		AND TIME_TO_SEC(TIMEDIFF(NOW(), cp.`time_start`)) < 900
-		GROUP BY c.id_connections');
+		GROUP BY c.id_connections
+		ORDER BY c.date_add DESC');
 	}
 	
 	public function hookAdminStatsModules($params)
@@ -72,12 +77,13 @@ class StatsLive extends Module
 		{
 			echo $this->l('Total:').' '.intval($totalCustomers).'
 			<table cellpadding="0" cellspacing="0" class="table space">
-				<tr><th>'.$this->l('ID').'</th><th>'.$this->l('Name').'</th><th>'.$this->l('View').'</th></tr>';
+				<tr><th>'.$this->l('ID').'</th><th>'.$this->l('Name').'</th><th>'.$this->l('Current Page').'</th><th>'.$this->l('View').'</th></tr>';
 			foreach ($customers as $customer)
 				echo '
 				<tr'.($irow++ % 2 ? ' class="alt_row"' : '').'>
-					<td style="width: 25px;">'.$customer['id_customer'].'</td>
-					<td style="width: 400px;">'.$customer['firstname'].' '.$customer['lastname'].'</td>
+					<td>'.$customer['id_customer'].'</td>
+					<td style="width: 200px;">'.$customer['firstname'].' '.$customer['lastname'].'</td>
+					<td style="width: 200px;">'.$customer['page'].'</td>
 					<td style="text-align: right; width: 25px;">
 						<a href="index.php?tab=AdminCustomers&id_customer='.$customer['id_customer'].'&viewcustomer&token='.Tools::getAdminToken('AdminCustomers'.intval(Tab::getIdFromClassName('AdminCustomers')).intval($cookie->id_employee)).'" target="_blank">
 							<img src="../modules/'.$this->name.'/logo.gif" />
@@ -93,17 +99,20 @@ class StatsLive extends Module
 		if ($totalVisitors)
 		{
 			echo $this->l('Total:').' '.intval($totalVisitors).'
+			<div style="overflow-y: scroll; height: 600px;">
 			<table cellpadding="0" cellspacing="0" class="table space">
-				<tr><th>#</th><th>'.$this->l('IP').'</th><th>'.$this->l('Since').'</th><th>'.$this->l('Referrer').'</th></tr>';
+				<tr><th>'.$this->l('Guest').'</th><th>'.$this->l('IP').'</th><th>'.$this->l('Since').'</th><th>'.$this->l('Current page').'</th><th>'.$this->l('Referrer').'</th></tr>';
 			foreach ($visitors as $visitor)
 				echo '
 					<tr'.($irow++ % 2 ? ' class="alt_row"' : '').'>
-						<td style="width: 25px;">'.$visitor['id_guest'].'</td>
+						<td>'.$visitor['id_guest'].'</td>
 						<td style="width: 80px;">'.long2ip($visitor['ip_address']).'</td>
-						<td style="width: 100px;">'.Tools::displayDate($visitor['date_add'], intval($cookie->id_lang), true).'</td>
-						<td style="width: 300px;">'.(empty($visitor['http_referer']) ? $this->l('none') : parse_url($visitor['http_referer'], PHP_URL_HOST)).'</td>
+						<td style="width: 100px;">'.substr($visitor['date_add'], 11).'</td>
+						<td style="width: 200px;">'.$visitor['page'].'</td>
+						<td style="width: 200px;">'.(empty($visitor['http_referer']) ? $this->l('none') : parse_url($visitor['http_referer'], PHP_URL_HOST)).'</td>
 					</tr>';
-			echo '</table>';
+			echo '</table>
+			</div>';
 		}
 		else
 			echo $this->l('There is no visitor online now.');

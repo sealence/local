@@ -69,13 +69,13 @@ class Swift_Plugin_ConnectionRotator implements Swift_Events_SendListener, Swift
    * Swift's SendEvent listener.
    * Invoked when Swift sends a message
    * @param Swift_Events_SendEvent The event information
-   * @throws Swift_Connection_Exception If the connection cannot be rotated
+   * @throws Swift_ConnectionException If the connection cannot be rotated
    */
   public function sendPerformed(Swift_Events_SendEvent $e)
   {
     if (!method_exists($e->getSwift()->connection, "nextConnection"))
     {
-      throw new Swift_Connection_Exception("The ConnectionRotator plugin cannot be used with connections other than Swift_Connection_Rotator.");
+      throw new Swift_ConnectionException("The ConnectionRotator plugin cannot be used with connections other than Swift_Connection_Rotator.");
     }
     if (!$this->called)
     {

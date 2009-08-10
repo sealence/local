@@ -7,7 +7,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.0
+  * @version 1.2
   *
   */
  
@@ -19,8 +19,8 @@ include(PS_ADMIN_DIR.'/functions.php');
 $errors = array();
 
 // Checking path
-$pathServer = ereg_replace('^/', '', $_SERVER['PHP_SELF']);
-$pathUser = ereg_replace('^/', '', str_replace($_SERVER['DOCUMENT_ROOT'], '', $_SERVER['SCRIPT_FILENAME']));
+$pathServer = preg_replace('!^/!', '', $_SERVER['PHP_SELF']);
+$pathUser = preg_replace('!^/!', '', str_replace($_SERVER['DOCUMENT_ROOT'], '', $_SERVER['SCRIPT_FILENAME']));
 if (strcmp($pathServer, $pathUser))
 	$errors[] = Tools::displayError('Path is not the same between your browser and you server :').'<br /><br /><b>'.
 				Tools::displayError('- Server:').'</b><br />'.htmlentities($pathServer).'<br /><br /><b>'.
@@ -126,10 +126,10 @@ if(file_exists(PS_ADMIN_DIR.'/../install') OR file_exists(PS_ADMIN_DIR.'/../admi
 else
 {
 	echo '			<label>'.translate('E-mail address:').'</label><br />
-					<input type="text" id="email" name="email" value="'.Tools::safeOutput(Tools::getValue('email')).'" class="input" />
+					<input type="text" id="email" name="email" value="'.Tools::safeOutput(Tools::getValue('email')).'" class="input"/>
 					<div style="margin: 0.5em 0 0 0;">
 						<label>'.translate('Password:').'</label><br />
-						<input type="password" name="passwd" class="input" />
+						<input type="password" name="passwd" class="input" value=""/>
 					</div>
 					<div>
 						<div id="submit"><input type="submit" name="Submit" value="'.translate('Connection').'" class="button" /></div>

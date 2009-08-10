@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -36,8 +36,8 @@ class Validate
 	{
 		if (!$url OR $url == 'http://')
 			$errors[] = Tools::displayError('please specify module URL');
-		elseif (substr($url, -4) != '.tar')
-			$errors[] = Tools::displayError('this is not a valid module URL (must end with .tar)');
+		elseif (substr($url, -4) != '.tar' AND substr($url, -4) != '.zip' AND substr($url, -4) != '.tgz' AND substr($url, -7) != '.tar.gz')
+			$errors[] = Tools::displayError('unknown archive type');
 		else
 		{
 			if ((strpos($url, 'http')) === false)
@@ -86,7 +86,7 @@ class Validate
 	
     static public function isUnsignedFloat($float)
     {
-		return strval(floatval($float)) == strval($float) AND $f >= 0;
+			return strval(floatval($float)) == strval($float) AND $float >= 0;
 	}
 
 	/**
@@ -135,7 +135,8 @@ class Validate
 	*/
 	static public function isName($name)
 	{
-		return preg_match('/^[^0-9!<>,;?=+()@#"°{}_$%:]*$/u', stripslashes($name));
+
+		return preg_match('/^[^0-9!<>,;?=+()@#"°{}_$%:]*$/ui', stripslashes($name));
 	}
 
 	/**
@@ -251,6 +252,11 @@ class Validate
 	static public function isLanguageIsoCode($isoCode)
 	{
 		return preg_match('/^[a-z]{2,3}$/ui', $isoCode);
+	}
+	
+	static public function isStateIsoCode($isoCode)
+	{
+		return preg_match('/^[a-z]{1,4}$/ui', $isoCode);
 	}
 
 	/**
@@ -588,7 +594,7 @@ class Validate
 	*/
 	static public function isUnsignedInt($int)
 	{
-		return (int) ((string) $int) AND $int < 4294967296  AND $int >= 0;
+		return ((int) ((string) $int) OR $int == 0) AND $int < 4294967296 AND $int >= 0;
 	}
 
 	/**
@@ -600,7 +606,7 @@ class Validate
 	*/
 	static public function isUnsignedId($id)
 	{
-		return is_numeric($id) AND intval($id) > 0 AND intval($id) < 4294967296;
+		return self::isUnsignedInt($id); /* Because an id could be equal to zero when there is no association */
 	}
 
 	static public function isNullOrUnsignedId($id)
@@ -638,7 +644,7 @@ class Validate
 	*/
 	static public function isUrl($url)
 	{
-		return preg_match('/^[[:alnum:]:#%&()_=.\/? +-]*$/ui', $url);
+		return preg_match('/^([[:alnum:]]|[:#%&_=\(\)\.\? \+\-@\/])+$/ui', $url);
 	}
 
 	/**
@@ -649,7 +655,9 @@ class Validate
 	*/
 	static public function isAbsoluteUrl($url)
 	{
-		return preg_match('/^(http:\/\/)[[:alnum:]]|[#%&()_=.? +-@]$/ui', $url);
+		if (!empty($url))
+			return preg_match('/^https?:\/\/([[:alnum:]]|[:#%&_=\(\)\.\? \+\-@\/])+$/ui', $url);
+		return true;
 	}
 
 	/**

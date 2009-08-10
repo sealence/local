@@ -13,8 +13,6 @@ class BlockBestSellers extends Module
 
         parent::__construct();
 
-        /* The parent construct is required for translations */
-				$this->page = basename(__FILE__, '.php');
         $this->displayName = $this->l('Top seller block');
         $this->description = $this->l('Add a block displaying the shop\'s top sellers');
     }
@@ -37,16 +35,14 @@ class BlockBestSellers extends Module
 		$bestsellers = ProductSale::getBestSalesLight(intval($params['cookie']->id_lang), 0, 5);
 
 		$best_sellers = array();
-		if (!empty($bestsellers))
+		foreach ($bestsellers AS $bestseller)
 		{
-			foreach ($bestsellers AS $bestseller)
-			{
-				$bestseller['price'] = Tools::displayPrice(Product::getPriceStatic(intval($bestseller['id_product'])), $currency);
-				$best_sellers[] = $bestseller;
-			}
+			$bestseller['price'] = Tools::displayPrice(Product::getPriceStatic(intval($bestseller['id_product'])), $currency);
+			$best_sellers[] = $bestseller;
 		}
-
-		$smarty->assign('best_sellers', $best_sellers);
+		$smarty->assign(array(
+			'best_sellers' => $best_sellers,
+			'mediumSize' => Image::getSize('medium')));
 		return $this->display(__FILE__, 'blockbestsellers.tpl');
 	}
 	

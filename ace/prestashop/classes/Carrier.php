@@ -8,13 +8,13 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
 class		Carrier extends ObjectModel
 {
-	/* @var int Tax id (none = 0) */
+	/** @var int Tax id (none = 0) */
 	public		$id_tax;
 
  	/** @var string Name */
@@ -32,15 +32,18 @@ class		Carrier extends ObjectModel
 	/** @var boolean True if carrier has been deleted (staying in database as deleted) */
 	public 		$deleted = 0;
 
-	/* @var boolean Active or not the shipping handling */
+	/** @var boolean Active or not the shipping handling */
 	public		$shipping_handling = true;
 	
-	/* @var int Behavior taken for unknown range */
+	/** @var int Behavior taken for unknown range */
 	public		$range_behavior;
+	
+	/** @var boolean Carrier module */
+	public		$is_module;
 
  	protected 	$fieldsRequired = array('name', 'active');
  	protected 	$fieldsSize = array('name' => 64);
- 	protected 	$fieldsValidate = array('id_tax' => 'isInt', 'name' => 'isCarrierName', 'active' => 'isBool', 'deleted' => 'isBool', 'url' => 'isAbsoluteUrl', 'shipping_handling' => 'isBool', 'range_behavior' => 'isBool');
+ 	protected 	$fieldsValidate = array('id_tax' => 'isInt', 'name' => 'isCarrierName', 'active' => 'isBool', 'url' => 'isAbsoluteUrl', 'shipping_handling' => 'isBool', 'range_behavior' => 'isBool');
  	protected 	$fieldsRequiredLang = array('delay');
  	protected 	$fieldsSizeLang = array('delay' => 128);
  	protected 	$fieldsValidateLang = array('delay' => 'isGenericName');
@@ -61,13 +64,21 @@ class		Carrier extends ObjectModel
 		$fields['deleted'] = intval($this->deleted);
 		$fields['shipping_handling'] = intval($this->shipping_handling);
 		$fields['range_behavior'] = intval($this->range_behavior);
+		$fields['is_module'] = intval($this->is_module);
 		return $fields;
+	}
+
+	public function __construct($id = NULL, $id_lang = NULL)
+	{
+		parent::__construct($id, $id_lang);
+		if ($this->name == '0')
+			$this->name = Configuration::get('PS_SHOP_NAME');
 	}
 
 	/**
 	* Check then return multilingual fields for database interaction
 	*
-	* @return array Multilingual fields�
+	* @return array Multilingual fields
 	*/
 	public function getTranslationsFieldsChild()
 	{
@@ -112,9 +123,9 @@ class		Carrier extends ObjectModel
 		$result = Db::getInstance()->getRow('
 		SELECT d.`price`
 		FROM `'._DB_PREFIX_.'delivery` d
-		LEFT JOIN `'._DB_PREFIX_.'range_weight` w ON d.`id_range_weight` = w.`id_range_weight`
+		LEFT JOIN `'._DB_PREFIX_.'range_weight` w ON (d.`id_range_weight` = w.`id_range_weight`)
 		WHERE d.`id_zone` = '.intval($id_zone).'
-		AND '.floatval($totalWeight).' < w.`delimiter2`
+		AND '.floatval($totalWeight).' <= w.`delimiter2`
 		AND d.`id_carrier` = '.intval($this->id).'
 		ORDER BY w.`delimiter1` ASC');
 		if (!isset($result['price']))
@@ -129,7 +140,7 @@ class		Carrier extends ObjectModel
 		FROM `'._DB_PREFIX_.'delivery` d
 		LEFT JOIN `'._DB_PREFIX_.'range_weight` w ON d.`id_range_weight` = w.`id_range_weight`
 		WHERE d.`id_zone` = '.intval($id_zone).'
-		AND '.floatval($totalWeight).' < w.`delimiter2`
+		AND '.floatval($totalWeight).' <= w.`delimiter2`
 		AND d.`id_carrier` = '.intval($id_carrier).'
 		ORDER BY w.`delimiter1` ASC');
 		if (!isset($result['price']))
@@ -142,7 +153,7 @@ class		Carrier extends ObjectModel
 		$result = Db::getInstance()->ExecuteS('
 		SELECT d.`price`
 		FROM `'._DB_PREFIX_.'delivery` d
-		LEFT JOIN `'._DB_PREFIX_.'range_weight` w ON d.`id_range_weight` = w.`id_range_weight`
+		INNER JOIN `'._DB_PREFIX_.'range_weight` w ON d.`id_range_weight` = w.`id_range_weight`
 		WHERE d.`id_zone` = '.intval($id_zone).'
 		AND d.`id_carrier` = '.intval($this->id).'
 		ORDER BY w.`delimiter2` DESC LIMIT 1');
@@ -168,7 +179,7 @@ class		Carrier extends ObjectModel
 		FROM `'._DB_PREFIX_.'delivery` d
 		LEFT JOIN `'._DB_PREFIX_.'range_price` r ON d.`id_range_price` = r.`id_range_price`
 		WHERE d.`id_zone` = '.intval($id_zone).'
-		AND '.floatval($orderTotal).' < r.`delimiter2`
+		AND '.floatval($orderTotal).' <= r.`delimiter2`
 		AND d.`id_carrier` = '.intval($this->id).'
 		ORDER BY r.`delimiter1` ASC');
 		if (!isset($result['price']))
@@ -183,7 +194,7 @@ class		Carrier extends ObjectModel
 		FROM `'._DB_PREFIX_.'delivery` d
 		LEFT JOIN `'._DB_PREFIX_.'range_price` r ON d.`id_range_price` = r.`id_range_price`
 		WHERE d.`id_zone` = '.intval($id_zone).'
-		AND '.floatval($orderTotal).' < r.`delimiter2`
+		AND '.floatval($orderTotal).' <= r.`delimiter2`
 		AND d.`id_carrier` = '.intval($id_carrier).'
 		ORDER BY r.`delimiter1` ASC');
 		if (!isset($result['price']))
@@ -196,7 +207,7 @@ class		Carrier extends ObjectModel
 		$result = Db::getInstance()->ExecuteS('
 		SELECT d.`price`
 		FROM `'._DB_PREFIX_.'delivery` d
-		LEFT JOIN `'._DB_PREFIX_.'range_price` r ON d.`id_range_price` = r.`id_range_price`
+		INNER JOIN `'._DB_PREFIX_.'range_price` r ON d.`id_range_price` = r.`id_range_price`
 		WHERE d.`id_zone` = '.intval($id_zone).'
 		AND d.`id_carrier` = '.intval($this->id).'
 		ORDER BY r.`delimiter2` DESC LIMIT 1');
@@ -233,21 +244,30 @@ class		Carrier extends ObjectModel
 	{
 	 	if (!Validate::isBool($active))
 	 		die(Tools::displayError());
+	 	
 		$sql = '
 			SELECT c.*, cl.delay
 			FROM `'._DB_PREFIX_.'carrier` c
-			LEFT JOIN `'._DB_PREFIX_.'carrier_lang` cl ON (c.`id_carrier` = cl.`id_carrier` AND cl.`id_lang` = '.$id_lang.')
+			LEFT JOIN `'._DB_PREFIX_.'carrier_lang` cl ON (c.`id_carrier` = cl.`id_carrier` AND cl.`id_lang` = '.intval($id_lang).')
 			LEFT JOIN `'._DB_PREFIX_.'carrier_zone` cz  ON (cz.`id_carrier` = c.`id_carrier`)'.
-			($id_zone ? 'LEFT JOIN `'._DB_PREFIX_.'zone` z  ON (z.`id_zone` = '.$id_zone.')' : '').'
+			($id_zone ? 'LEFT JOIN `'._DB_PREFIX_.'zone` z  ON (z.`id_zone` = '.intval($id_zone).')' : '').'
 			WHERE c.`deleted` '.($delete ? '= 1' : ' = 0').
 			($active ? ' AND c.`active` = 1' : '').
-			($id_zone ? ' AND cz.`id_zone` = '.$id_zone.'
+			($id_zone ? ' AND cz.`id_zone` = '.intval($id_zone).'
 			AND z.`active` = 1' : '').'
+			AND c.`is_module` = 0
 			GROUP BY c.`id_carrier`';
 		$carriers = Db::getInstance()->ExecuteS($sql);
-		foreach ($carriers as $key => $carrier)
-			if ($carrier['name'] == '0')
-				$carriers[$key]['name'] = Configuration::get('PS_SHOP_NAME');
+		
+		if (is_array($carriers) AND count($carriers))
+		{
+			foreach ($carriers as $key => $carrier)
+				if ($carrier['name'] == '0')
+					$carriers[$key]['name'] = Configuration::get('PS_SHOP_NAME');
+		}
+		else
+			$carriers = array();
+
 		return $carriers;
 	}
 
@@ -276,7 +296,7 @@ class		Carrier extends ObjectModel
 		return Db::getInstance()->ExecuteS('
 			SELECT *
 			FROM `'._DB_PREFIX_.'carrier_zone`
-			WHERE `id_carrier` = '. $this->id);
+			WHERE `id_carrier` = '. intval($this->id));
 	}
 
 	/**
@@ -298,9 +318,9 @@ class		Carrier extends ObjectModel
 	 */
 	public function addZone($id_zone)
 	{
-		return Db::getInstance()->ExecuteS('
+		return Db::getInstance()->Execute('
 			INSERT INTO `'._DB_PREFIX_.'carrier_zone` (`id_carrier` , `id_zone`)
-			VALUES ('.$this->id.', '.$id_zone.')');
+			VALUES ('.intval($this->id).', '.intval($id_zone).')');
 	}
 
 	/**
@@ -308,10 +328,10 @@ class		Carrier extends ObjectModel
 	 */
 	public function deleteZone($id_zone)
 	{
-		return Db::getInstance()->ExecuteS('
+		return Db::getInstance()->Execute('
 			DELETE FROM `'._DB_PREFIX_.'carrier_zone`
-			WHERE `id_carrier` = '.$this->id.'
-			AND `id_zone` = '.$id_zone.' LIMIT 1');
+			WHERE `id_carrier` = '.intval($this->id).'
+			AND `id_zone` = '.intval($id_zone).' LIMIT 1');
 	}
 
 	/**
@@ -374,7 +394,7 @@ class		Carrier extends ObjectModel
 			$res2 = Db::getInstance()->ExecuteS('
 			SELECT * FROM `'._DB_PREFIX_.'delivery`
 			WHERE id_carrier = '.intval($oldId).'
-			AND id_range_price = '.$val['id_range_price']);
+			AND id_range_price = '.intval($val['id_range_price']));
 			foreach ($res2 as $val2)
 				Db::getInstance()->Execute('
 				INSERT INTO `'._DB_PREFIX_.'delivery` (`id_carrier`,`id_range_price`,`id_range_weight`,`id_zone`, `price`)

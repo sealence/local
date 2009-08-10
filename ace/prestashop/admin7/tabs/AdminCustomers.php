@@ -7,7 +7,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -23,19 +23,28 @@ class AdminCustomers extends AdminTab
 	 	$this->edit = true;
 	 	$this->view = true;
 	 	$this->delete = true;
+		$this->deleted = true;
 
+		$this->_select = '(YEAR(NOW()) - YEAR(birthday)) as age, (
+			SELECT c.date_add FROM '._DB_PREFIX_.'guest g
+			LEFT JOIN '._DB_PREFIX_.'connections c ON c.id_guest = g.id_guest
+			WHERE g.id_customer = a.id_customer
+			ORDER BY c.date_add DESC
+			LIMIT 1
+		) as connect';
 		$genders = array(1 => $this->l('M'), 2 => $this->l('F'), 9 => $this->l('?'));
  		$this->fieldsDisplay = array(
 		'id_customer' => array('title' => $this->l('ID'), 'align' => 'center', 'width' => 25),
-		'id_gender' => array('title' => $this->l('Gender'), 'width' => 35, 'align' => 'center', 'icon' => array(1 => 'male.gif', 2 => 'female.gif', 'default' => 'unknown.gif'), 'orderby' => false, 'type' => 'select', 'select' => $genders, 'filter_key' => 'a!id_gender'),
+		'id_gender' => array('title' => $this->l('Gender'), 'width' => 25, 'align' => 'center', 'icon' => array(1 => 'male.gif', 2 => 'female.gif', 'default' => 'unknown.gif'), 'orderby' => false, 'type' => 'select', 'select' => $genders, 'filter_key' => 'a!id_gender'),
 		'lastname' => array('title' => $this->l('Last Name'), 'width' => 80),
 		'firstname' => array('title' => $this->l('First name'), 'width' => 60),
-		'email' => array('title' => $this->l('E-mail address'), 'width' => 140, 'maxlength' => 19),
-		'birthday' => array('title' => $this->l('Birthday'), 'width' => 60, 'type' => 'date'),
-		'active' => array('title' => $this->l('Enabled'), 'align' => 'center', 'active' => 'status', 'type' => 'bool', 'orderby' => false),
-		'newsletter' => array('title' => $this->l('Newsletter'), 'align' => 'center', 'type' => 'bool', 'icon' => array(0 => 'disabled.gif', 1 => 'enabled.gif'), 'orderby' => false),
-		'optin' => array('title' => $this->l('Opt-in'), 'align' => 'center', 'type' => 'bool', 'icon' => array(0 => 'disabled.gif', 1 => 'enabled.gif'), 'orderby' => false),
-		'date_add' => array('title' => $this->l('Registration Date'), 'width' => 60, 'type' => 'date'));
+		'email' => array('title' => $this->l('E-mail address'), 'width' => 120, 'maxlength' => 19),
+		'age' => array('title' => $this->l('Age'), 'width' => 30, 'search' => false),
+		'active' => array('title' => $this->l('Enabled'), 'width' => 25, 'align' => 'center', 'active' => 'status', 'type' => 'bool', 'orderby' => false),
+		'newsletter' => array('title' => $this->l('News.'), 'width' => 25, 'align' => 'center', 'type' => 'bool', 'icon' => array(0 => 'disabled.gif', 1 => 'enabled.gif'), 'orderby' => false),
+		'optin' => array('title' => $this->l('Opt.'), 'width' => 25, 'align' => 'center', 'type' => 'bool', 'icon' => array(0 => 'disabled.gif', 1 => 'enabled.gif'), 'orderby' => false),
+		'date_add' => array('title' => $this->l('Registration'), 'width' => 60, 'type' => 'date'),
+		'connect' => array('title' => $this->l('Connection'), 'width' => 60, 'type' => 'datetime', 'search' => false));
 
 		$this->optionTitle = $this->l('Customers options');
 		$this->_fieldsOptions = array(
@@ -44,12 +53,53 @@ class AdminCustomers extends AdminTab
 
 		parent::__construct();
 	}
-
+	
 	public function postProcess()
 	{
-		if (!Tools::getValue('id_customer') AND Tools::isSubmit('submitAdd'.$this->table) AND $customer_email = strval(Tools::getValue('email')) AND $customer = new Customer() AND $customer->getByEmail($customer_email))
-			if (intval($customer->id))
-				$this->_errors[] = Tools::displayError('an account already exists for this e-mail address:').' '.$customer_email;
+		global $currentIndex;
+		
+		if (Tools::getValue('submitAdd'.$this->table))
+		{
+		 	/* Checking fields validity */
+			$this->validateRules();
+			if (!sizeof($this->_errors))
+			{
+				$id = intval(Tools::getValue('id_'.$this->table));
+				if (isset($id) AND !empty($id))
+				{
+					if ($this->tabAccess['edit'] !== '1')
+						$this->_errors[] = Tools::displayError('You do not have permission to edit anything here.');
+					else
+					{
+						$object = new $this->className($id);
+						if (Validate::isLoadedObject($object))
+						{
+							$customer_email = strval(Tools::getValue('email'));
+							
+							// check if e-mail already used
+							if ($customer_email != $object->email)
+							{
+								$customer = new Customer();
+								$customer->getByEmail($customer_email);
+								if ($customer->id)
+									$this->_errors[] = Tools::displayError('an account already exists for this e-mail address:').' '.$customer_email;
+							}
+							
+							// Updating customer's group
+							if (!sizeof($this->_errors))
+							{
+								$groupList = Tools::getValue('groupBox');
+								$object->cleanGroups();
+								if (is_array($groupList) AND sizeof($groupList) > 0)
+									$object->addGroups($groupList);
+							}
+						}
+						else
+							$this->_errors[] = Tools::displayError('an error occurred while loading object').' <b>'.$this->table.'</b> '.Tools::displayError('(cannot load object)');
+					}
+				}
+			}
+		}
 		return parent::postProcess();
 	}
 
@@ -66,8 +116,9 @@ class AdminCustomers extends AdminTab
 		$addresses = $customer->getAddresses($defaultLanguage);
 		$discounts = Discount::getCustomerDiscounts($defaultLanguage, $customer->id, false, false);
 		$orders = Order::getCustomerOrders($customer->id);
-		$cart = new Cart($customer->getLastCart());
-		$currency = new Currency($cart->id_currency);
+		$carts = Cart::getCustomerCarts($customer->id);
+		$groups = $customer->getGroups();
+		$referrers = Referrer::getReferrers($customer->id);
 
 		echo '
 		<div style="float: left">
@@ -76,16 +127,16 @@ class AdminCustomers extends AdminTab
 			<img src="../img/admin/'.($customer->id_gender == 2 ? 'female' : ($customer->id_gender == 1 ? 'male' : 'unknown')).'.gif" style="margin-bottom: 5px" /><br />
 			<a href="mailto:'.$customer->email.'" style="text-decoration: underline; color: blue">'.$customer->email.'</a><br /><br />
 			'.$this->l('ID:').' '.sprintf('%06d', $customer->id).'<br />
-			'.$this->l('Registration date:').' '.Tools::displayDate($customer->date_add, 1, true).'<br />
-			'.$this->l('Last visit:').' '.($customerStats['last_visit'] ? Tools::displayDate($customerStats['last_visit'], 1, true) : $this->l('never')).'
+			'.$this->l('Registration date:').' '.Tools::displayDate($customer->date_add, intval($cookie->id_lang), true).'<br />
+			'.$this->l('Last visit:').' '.($customerStats['last_visit'] ? Tools::displayDate($customerStats['last_visit'], intval($cookie->id_lang), true) : $this->l('never')).'
 		</fieldset>
 		</div>
 		<div style="float: left; margin-left: 50px">
 		<fieldset style="width: 300px"><div style="float: right"><a href="'.$currentIndex.'&addcustomer&id_customer='.$customer->id.'&token='.$this->token.'"><img src="../img/admin/edit.gif" /></a></div>
 			'.$this->l('Newsletter:').' '.($customer->newsletter ? '<img src="../img/admin/enabled.gif" />' : '<img src="../img/admin/disabled.gif" />').'<br />
 			'.$this->l('Opt-in:').' '.($customer->optin ? '<img src="../img/admin/enabled.gif" />' : '<img src="../img/admin/disabled.gif" />').'<br />
-			'.$this->l('Age:').' '.$customerStats['age'].' '.((!empty($customer->birthday['age'])) ? '('.Tools::displayDate($customer->birthday, 1).')' : $this->l('unknown')).'<br /><br />
-			'.$this->l('Last update:').' '.Tools::displayDate($customer->date_upd, 1, true).'<br />
+			'.$this->l('Age:').' '.$customerStats['age'].' '.((!empty($customer->birthday['age'])) ? '('.Tools::displayDate($customer->birthday, intval($cookie->id_lang)).')' : $this->l('unknown')).'<br /><br />
+			'.$this->l('Last update:').' '.Tools::displayDate($customer->date_upd, intval($cookie->id_lang), true).'<br />
 			'.$this->l('Status:').' '.($customer->active ? '<img src="../img/admin/enabled.gif" />' : '<img src="../img/admin/disabled.gif" />').'
 		</fieldset>
 		</div>
@@ -95,6 +146,31 @@ class AdminCustomers extends AdminTab
 		if (($hook = Module::hookExec('adminCustomers', array('id_customer' => $customer->id))) !== false)
 			echo '<div>'.$hook.'</div>';
 
+		echo '<h2>'.$this->l('Groups').' ('.sizeof($groups).')</h2>';
+		if ($groups AND sizeof($groups))
+		{
+			echo '
+			<table cellspacing="0" cellpadding="0" class="table">
+				<tr>
+					<th class="center">'.$this->l('ID').'</th>
+					<th class="center">'.$this->l('Name').'</th>
+					<th class="center">'.$this->l('Actions').'</th>
+				</tr>';
+			$tokenGroups = Tools::getAdminToken('AdminGroups'.intval(Tab::getIdFromClassName('AdminGroups')).intval($cookie->id_employee));
+			foreach ($groups AS $group)
+			{
+				$objGroup = new Group($group);
+				echo '
+				<tr '.($irow++ % 2 ? 'class="alt_row"' : '').' style="cursor: pointer" onclick="document.location = \'?tab=AdminGroups&id_group='.$objGroup->id.'&viewgroup&token='.$tokenGroups.'\'">
+					<td class="center">'.$objGroup->id.'</td>
+					<td>'.$objGroup->name[$defaultLanguage].'</td>
+					<td align="center"><a href="?tab=AdminGroups&id_group='.$objGroup->id.'&viewgroup&token='.$tokenGroups.'"><img src="../img/admin/details.gif" /></a></td>
+				</tr>';
+			}
+			echo '
+			</table>';
+		}
+		echo '<div class="clear">&nbsp;</div>';
 		echo '<h2>'.$this->l('Orders').' ('.sizeof($orders).')</h2>';
 		if ($orders AND sizeof($orders))
 		{
@@ -114,7 +190,7 @@ class AdminCustomers extends AdminTab
 				echo '
 				<tr '.($irow++ % 2 ? 'class="alt_row"' : '').' style="cursor: pointer" onclick="document.location = \'?tab=AdminOrders&id_order='.$order['id_order'].'&vieworder&token='.$tokenOrders.'\'">
 					<td class="center">'.sprintf('%06d', $order['id_order']).'</td>
-					<td>'.Tools::displayDate($order['date_add'], 1, true).'</td>
+					<td>'.Tools::displayDate($order['date_add'], intval($cookie->id_lang), true).'</td>
 					<td align="right">'.$order['nb_products'].'</td>
 					<td align="right">'.Tools::displayPrice($order['total_paid'], new Currency(intval($order['id_currency']))).'</td>
 					<td>'.$order['payment'].'</td>
@@ -197,75 +273,44 @@ class AdminCustomers extends AdminTab
 		}
 		else
 			echo $customer->firstname.' '.$customer->lastname.' '.$this->l('has no discount vouchers').'.';
-		echo '<div class="clear">&nbsp;</div>
-		<h2>'.$this->l('Last cart').($cart->id ? ' (#'.sprintf('%08d', $cart->id).')' : '').'</h2>';
-		if ($cart->id)
+		echo '<div class="clear">&nbsp;</div>';
+		
+		echo '<h2>'.$this->l('Carts').' ('.sizeof($carts).')</h2>';
+		if ($carts AND sizeof($carts))
 		{
-			$products = $cart->getProducts();
-			$discounts = $cart->getDiscounts();
-			$total_discounts = $cart->getOrderTotal(true, 2);
-			$total_shipping = $cart->getOrderShippingCost($cart->id_carrier);
-			$total_wrapping = $cart->getOrderTotal(true, 6);
-			$total_products = $cart->getOrderTotal(true, 1);
-			$total_price = $cart->getOrderTotal();
-
 			echo '
 			<table cellspacing="0" cellpadding="0" class="table">
 				<tr>
-					<th width="75" align="center">'.$this->l('Reference').'</th>
-					<th>'.$this->l('Product').'</th>
-					<th width="55" align="center">'.$this->l('Quantity').'</th>
-					<th width="88" align="right">'.$this->l('Unit price').'</th>
-					<th width="80" align="right">'.$this->l('Total price').'</th>
+					<th class="center">'.$this->l('ID').'</th>
+					<th class="center">'.$this->l('Date').'</th>
+					<th class="center">'.$this->l('Total').'</th>
+					<th class="center">'.$this->l('Carrier').'</th>
+					<th class="center">'.$this->l('Actions').'</th>
 				</tr>';
-			if ($products)
-				foreach ($products as $product)
-					echo '
-					<tr>
-						<td>'.$product['reference'].'</td>
-						<td>'.$product['name'].'</a></td>
-						<td align="right">'.$product['quantity'].'</td>
-						<td align="right">'.Tools::displayPrice($product['price'], $currency).'</td>
-						<td align="right">'.Tools::displayPrice($product['total_wt'], $currency).'</td>
-					</tr>';
-			if ($discounts)
-				foreach ($discounts as $discount)
-					echo '
-					<tr>
-						<td>'.$discount['name'].'</td>
-						<td>'.$discount['description'].'</td>
-						<td align="right">1</td>
-						<td align="right">-'.(intval($discount['id_discount_type']) === 1 ? abs($discount['value']).' %' : Tools::displayPrice($discount['value'], $currency)).'</td>
-						<td align="right">-'.(intval($discount['id_discount_type']) === 1 ? abs($discount['value']).' %' : Tools::displayPrice($discount['value'], $currency)).'</td>
-					</tr>';
+			$tokenCarts = Tools::getAdminToken('AdminCarts'.intval(Tab::getIdFromClassName('AdminCarts')).intval($cookie->id_employee));
+			foreach ($carts AS $cart)
+			{
+				$cartI = new Cart(intval($cart['id_cart']));
+				$summary = $cartI->getSummaryDetails();
+				$currency = new Currency(intval($cart['id_currency']));
+				$carrier = new Carrier(intval($cart['id_carrier']));
+				echo '
+				<tr '.($irow++ % 2 ? 'class="alt_row"' : '').' style="cursor: pointer" onclick="document.location = \'?tab=AdminCarts&id_cart='.$cart['id_cart'].'&viewcart&token='.$tokenCarts.'\'">
+					<td class="center">'.sprintf('%06d', $cart['id_cart']).'</td>
+					<td>'.Tools::displayDate($cart['date_add'], intval($cookie->id_lang), true).'</td>
+					<td align="right">'.Tools::displayPrice($summary['total_price'], $currency).'</td>
+					<td>'.$carrier->name.'</td>
+					<td align="center"><a href="?tab=AdminCarts&id_cart='.$cart['id_cart'].'&viewcart&token='.$tokenCarts.'"><img src="../img/admin/details.gif" /></a></td>
+				</tr>';
+			}
 			echo '
-				<tr style="text-align: right; font-weight: bold;">
-					<td colspan="4">'.$this->l('Products:').' </td>
-					<td>'.Tools::displayPrice($total_products, $currency).'</td>
-				</tr>
-				<tr style="text-align: right; font-weight: bold;">
-					<td colspan="4">'.$this->l('Vouchers:').' </td>
-					<td>'.Tools::displayPrice($total_discounts, $currency).'</td>
-				</tr>
-				<tr style="text-align: right; font-weight: bold;">
-					<td colspan="4">'.$this->l('Gift-wrapping:').' </td>
-					<td>'.Tools::displayPrice($total_wrapping, $currency).'</td>
-				</tr>				
-				<tr style="text-align: right; font-weight: bold;">
-					<td colspan="4">'.$this->l('Shipping:').' </td>
-					<td>'.Tools::displayPrice($total_shipping, $currency).'</td>
-				</tr>
-				<tr style="text-align: right; font-weight: bold;">
-					<td colspan="4">'.$this->l('Total:').' </td>
-					<td>'.Tools::displayPrice($total_price, $currency).'</td>
-				</tr>
 			</table>';
 		}
 		else
 			echo $this->l('No cart available').'.';
 		echo '<div class="clear">&nbsp;</div>';
-		
-/* Last connections */
+
+		/* Last connections */
         $connections = $customer->getLastConnections();
         if (sizeof($connections))    
         {
@@ -288,14 +333,31 @@ class AdminCustomers extends AdminTab
                     </tr>';
             echo '</table><div class="clear">&nbsp;</div>';
         }
+        if (sizeof($referrers))    
+        {
+            echo '<h2>'.$this->l('Referrers').'</h2>
+            <table cellspacing="0" cellpadding="0" class="table">
+                <tr>
+                    <th style="width: 200px">'.$this->l('Date').'</th>
+                    <th style="width: 200px">'.$this->l('Name').'</th>
+                </tr>';
+            foreach ($referrers as $referrer)
+                echo '<tr>
+                        <td>'.Tools::displayDate($referrer['date_add'], intval($cookie->id_lang), true).'</td>
+                        <td>'.$referrer['name'].'</td>
+                    </tr>';
+            echo '</table><div class="clear">&nbsp;</div>';
+        }
         echo '<a href="'.$currentIndex.'&token='.$this->token.'"><img src="../img/admin/arrow2.gif" /> '.$this->l('Back to customer list').'</a><br />';
-    } 
+    }
 
 	public function displayForm()
 	{
 		global $currentIndex;
 		$obj = $this->loadObject(true);
-		$birthday = split('-', $this->getFieldValue($obj, 'birthday'));
+		$defaultLanguage = intval(Configuration::get('PS_LANG_DEFAULT'));
+		$birthday = explode('-', $this->getFieldValue($obj, 'birthday'));
+		$customer_groups = $obj->getGroups();
 		echo '
 		<form action="'.$currentIndex.'&submitAdd'.$this->table.'=1&token='.$this->token.'" method="post" class="width3">
 		'.($obj->id ? '<input type="hidden" name="id_'.$this->table.'" value="'.$obj->id.'" />' : '').'
@@ -391,6 +453,36 @@ class AdminCustomers extends AdminTab
 					<label class="t" for="optin_off"><img src="../img/admin/disabled.gif" alt="'.$this->l('Disabled').'" title="'.$this->l('Disabled').'" /></label>
 					<p>'.$this->l('Customer will receive your ads via e-mail').'</p>
 				</div>
+				<label>'.$this->l('Groups:').' </label>
+				<div class="margin-form">';
+					$groups = Group::getGroups($defaultLanguage, true);
+					if (sizeof($groups))
+					{
+						echo '
+					<table cellspacing="0" cellpadding="0" class="table" style="width: 29.5em;">
+						<tr>
+							<th><input type="checkbox" name="checkme" class="noborder" onclick="checkDelBoxes(this.form, \'groupBox[]\', this.checked)" /></th>
+							<th>'.$this->l('ID').'</th>
+							<th>'.$this->l('Group name').'</th>
+						</tr>';
+						$irow = 0;
+						foreach ($groups as $group)
+						{
+							echo '
+							<tr class="'.($irow++ % 2 ? 'alt_row' : '').'">
+								<td>'.($group['id_group'] != 1 ? '<input type="checkbox" name="groupBox[]" class="groupBox" id="groupBox_'.$group['id_group'].'" value="'.$group['id_group'].'" '.(in_array($group['id_group'], $customer_groups) ? 'checked="checked" ' : '').'/>' : '').'</td>
+								<td>'.$group['id_group'].'</td>
+								<td><label for="groupBox_'.$group['id_group'].'" class="t">'.$group['name'].'</label></td>
+							</tr>';
+						}
+						echo '
+					</table>
+					<p style="padding:0px; margin:10px 0px 10px 0px;">'.$this->l('Mark all checkbox(es) of groups to which the customer is to be member').'<sup> *</sup></p>
+					';
+					} else
+						echo '<p>'.$this->l('No group created').'</p>';
+				echo '
+				</div>
 				<div class="margin-form">
 					<input type="submit" value="'.$this->l('   Save   ').'" name="submitAdd'.$this->table.'" class="button" />
 				</div>
@@ -403,6 +495,11 @@ class AdminCustomers extends AdminTab
 	{
 		global $cookie;
 		return parent::getList(intval($cookie->id_lang), !Tools::getValue($this->table.'Orderby') ? 'date_add' : NULL, !Tools::getValue($this->table.'Orderway') ? 'DESC' : NULL);
+	}
+	
+	public function beforeDelete($object)
+	{
+		return $object->isUsed();
 	}
 }
 

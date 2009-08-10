@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -18,7 +18,7 @@ class MySQL extends Db
 	{
 		if ($this->_link = @mysql_connect($this->_server, $this->_user, $this->_password))
 		{
-			if(!mysql_select_db($this->_database, $this->_link))
+			if(!$this->set_db($this->_database))
 				die(Tools::displayError('The database selection cannot be made.'));
 		}
 		else
@@ -31,28 +31,37 @@ class MySQL extends Db
 		return $this->_link;
 	}
 	
+	/* do not remove, useful for some modules */
+	public function set_db($db_name) {
+		return mysql_select_db($db_name, $this->_link);
+	}
+	
 	public function	disconnect()
 	{
 		if ($this->_link)
-			mysql_close($this->_link);
+			@mysql_close($this->_link);
 		$this->_link = false;
 	}
 	
 	public function	getRow($query)
 	{
-		if (parent::blacklist($query))
-			return false;
 		$this->_result = false;
 		if ($this->_link)
 			if ($this->_result = mysql_query($query.' LIMIT 1', $this->_link))
 				return mysql_fetch_assoc($this->_result);
 		return false;
 	}
+
+	public function	getValue($query)
+	{
+		$this->_result = false;
+		if ($this->_link AND $this->_result = mysql_query($query.' LIMIT 1', $this->_link) AND is_array($tmpArray = mysql_fetch_assoc($this->_result)))
+			return array_shift($tmpArray);
+		return false;
+	}
 	
 	public function	Execute($query)
 	{
-		if (parent::blacklist($query))
-			return false;
 		$this->_result = false;
 		if ($this->_link)
 		{
@@ -62,20 +71,24 @@ class MySQL extends Db
 		return false;
 	}
 	
-	public function	ExecuteS($query)
+	public function	ExecuteS($query, $array = true)
 	{
-		if (parent::blacklist($query))
-			return false;
 		$this->_result = false;
-		if ($this->_link)
-			if ($this->_result = mysql_query($query, $this->_link))
-			{
-				$resultArray = array();
-				while ($row = mysql_fetch_assoc($this->_result))
-					$resultArray[] = $row;
-				return $resultArray;
-			}
+		if ($this->_link && $this->_result = mysql_query($query, $this->_link))
+		{
+			if (!$array)
+				return $this->_result;
+			$resultArray = array();
+			while ($row = mysql_fetch_assoc($this->_result))
+				$resultArray[] = $row;
+			return $resultArray;
+		}
 		return false;
+	}
+
+	public function nextRow($result = false)
+	{
+		return mysql_fetch_assoc($result ? $result : $this->_result);
 	}
 	
 	public function	delete($table, $where = false, $limit = false)
@@ -108,8 +121,6 @@ class MySQL extends Db
 
 	protected function q($query)
 	{
-		if (parent::blacklist($query))
-			return false;
 		$this->_result = false;
 		if ($this->_link)
 			return mysql_query($query, $this->_link);
@@ -138,7 +149,19 @@ class MySQL extends Db
 			return 1;
 		if (!@mysql_select_db($db, $link))
 			return 2;
+		@mysql_close($link);
 		return 0;
+	}
+
+	static public function tryUTF8($server, $user, $pwd)
+	{
+		$link = @mysql_connect($server, $user, $pwd);
+		if (!mysql_query('SET NAMES \'utf8\'', $link))
+			$ret = false;
+		else
+			$ret = true;
+		@mysql_close($link);
+		return $ret;
 	}
 }
 

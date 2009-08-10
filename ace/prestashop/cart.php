@@ -15,7 +15,7 @@ $add = Tools::getIsset('add') ? 1 : 0;
 $delete = Tools::getIsset('delete') ? 1 : 0;
 
 if (Configuration::get('PS_TOKEN_ENABLE') == 1 &&
-	strcasecmp(Tools::getToken(false), Tools::getValue('token')) &&
+	strcasecmp(Tools::getToken(false), strval(Tools::getValue('token'))) &&
 	$cookie->isLogged() === true)
 	$errors[] = Tools::displayError('invalid token');
 
@@ -47,12 +47,11 @@ if ($add OR Tools::getIsset('update') OR $delete)
 			}
 			elseif ($producToAdd->hasAttributes() AND !$delete)
 			{
-				$idProductAttribute = Product::getDefaultAttribute(intval($producToAdd->id));
+				$idProductAttribute = Product::getDefaultAttribute(intval($producToAdd->id), intval($producToAdd->out_of_stock) == 2 ? !intval(Configuration::get('PS_ORDER_OUT_OF_STOCK')) : !intval($producToAdd->out_of_stock));
 				if (!$idProductAttribute)
 					Tools::redirectAdmin($link->getProductLink($producToAdd));
-				else
-					if (!$delete AND !$producToAdd->isAvailableWhenOutOfStock($producToAdd->out_of_stock) AND !Attribute::checkAttributeQty(intval($idProductAttribute), intval($qty)))
-						$errors[] = Tools::displayError('product is no longer available');
+				elseif (!$delete AND !$producToAdd->isAvailableWhenOutOfStock($producToAdd->out_of_stock) AND !Attribute::checkAttributeQty(intval($idProductAttribute), intval($qty)))
+					$errors[] = Tools::displayError('product is no longer available');
 			}
 			elseif (!$delete AND !$producToAdd->checkQty(intval($qty)))
 				$errors[] = Tools::displayError('product is no longer available');
@@ -72,15 +71,17 @@ if ($add OR Tools::getIsset('update') OR $delete)
 					/* Product addition to the cart */
 					if (!isset($cart->id) OR !$cart->id)
 					{
+						$cart->id_address_delivery = intval($cookie->id_address_delivery);
+						$cart->id_address_invoice = intval($cookie->id_address_invoice);
 					    $cart->add();
 					    if ($cart->id)
 							$cookie->id_cart = intval($cart->id);
 					}
 					if ($add AND !$cart->containsProduct(intval($idProduct), intval($idProductAttribute), $customizationId) AND !$producToAdd->hasAllRequiredCustomizableFields())
-						$errors[] = Tools::displayError('please fill all required fields');
-					if (!$cart->updateQty(intval($qty), intval($idProduct), intval($idProductAttribute), $customizationId, Tools::getValue('op', 'up')))
+						$errors[] = Tools::displayError('Please fill all required fields, then save the customization.');
+					if (!sizeof($errors) AND !$cart->updateQty(intval($qty), intval($idProduct), intval($idProductAttribute), $customizationId, Tools::getValue('op', 'up')))
 						$errors[] = Tools::displayError('you already have the maximum quantity available for this product')
-							.((basename($_SERVER['HTTP_REFERER']) == 'order.php') ? ('<script language="javascript">setTimeout("history.back()",5000);</script><br />- '.
+							.((isset($_SERVER['HTTP_REFERER']) AND basename($_SERVER['HTTP_REFERER']) == 'order.php') ? ('<script language="javascript">setTimeout("history.back()",5000);</script><br />- '.
 							Tools::displayError('You will be redirected to your cart in a few seconds.')) : '');
 				}
 				elseif ($delete)
@@ -101,6 +102,8 @@ if ($add OR Tools::getIsset('update') OR $delete)
 					if (!Cart::getNbProducts(intval($cart->id)))
 					{
 						$cart->id_carrier = 0;
+						$cart->gift = 0;
+						$cart->gift_message = '';
 						$cart->update();
 					}
 				}
@@ -113,7 +116,7 @@ if ($add OR Tools::getIsset('update') OR $delete)
 				if (isset($_SERVER['HTTP_REFERER']))
 				{
 					// Redirect to previous page
-					ereg('http(s?)://(.*)/(.*)', $_SERVER['HTTP_REFERER'], $regs);
+					preg_match('!http(s?)://(.*)/(.*)!', $_SERVER['HTTP_REFERER'], $regs);
 					if (isset($regs[3]) AND !Configuration::get('PS_CART_REDIRECT') AND Tools::getValue('ajax') != 'true')
 						Tools::redirect($regs[3]);
 				}

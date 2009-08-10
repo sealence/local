@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
   
@@ -186,6 +186,21 @@ class			Hook extends ObjectModel
 		if (!is_object($pdf) OR !Validate::isUnsignedId($id_order))
 			return false;
 		return Module::hookExec('PDFInvoice', array('pdf' => $pdf, 'id_order' => $id_order));
+	}
+	
+	static public function backBeforePayment($module)
+	{
+		$params['module'] = strval($module);
+		if (!$params['module'])
+			return false;
+		return Module::hookExec('backBeforePayment', $params);
+	}
+	
+	static public function updateCarrier($id_carrier, $carrier)
+	{
+		if (!Validate::isUnsignedId($id_carrier) OR !is_object($carrier))
+			return false;
+		return Module::hookExec('updateCarrier', array('id_carrier' => $id_carrier, 'carrier' => $carrier));
 	}
 }
 

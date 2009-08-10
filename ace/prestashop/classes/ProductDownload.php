@@ -1,5 +1,17 @@
 <?php
 
+/**
+  * ProductDownload class, ProductDownload.php
+  * Product download management
+  * @category classes
+  *
+  * @author PrestaShop <support@prestashop.com>
+  * @copyright PrestaShop
+  * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
+  * @version 1.2
+  *
+  */
+
 class ProductDownload extends ObjectModel
 {
 	/** @var integer Product id which download belongs */
@@ -134,10 +146,10 @@ class ProductDownload extends ObjectModel
 		$data = Db::getInstance()->getRow('
 		SELECT `id_product_download`
 		FROM `'._DB_PREFIX_.'product_download`
-		WHERE `id_product` = ' . intval($id_product).'
+		WHERE `id_product` = '.intval($id_product).'
 		AND `active` = 1');
 		self::$_productIds[$id_product] = isset($data['id_product_download']) ? $data['id_product_download'] : false;
-		return $data['id_product_download'];
+		return self::$_productIds[$id_product];
 	}
 
 	/**
@@ -165,7 +177,7 @@ class ProductDownload extends ObjectModel
 	{
 		$sql = 'SELECT `display_filename`
 				FROM `'._DB_PREFIX_.'product_download`
-				WHERE `physically_filename` = \'' . strval($physically_filename) . '\'';
+				WHERE `physically_filename` = \'' . pSQL($physically_filename) . '\'';
 		$data = Db::getInstance()->getRow($sql);
 		return $data['display_filename'];
 	}

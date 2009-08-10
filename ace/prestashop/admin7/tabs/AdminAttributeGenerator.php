@@ -1,5 +1,16 @@
 <?php
 
+/**
+  * Attribute generator tab for admin panel, AdminAttributeGenerator.php
+  * @category admin
+  *
+  * @author PrestaShop <support@prestashop.com>
+  * @copyright PrestaShop
+  * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
+  * @version 1.2
+  *
+  */
+
 @ini_set('max_execution_time', 3600);
 include_once(PS_ADMIN_DIR.'/../classes/AdminTab.php');
 
@@ -70,7 +81,7 @@ class AdminAttributeGenerator extends AdminTab
 			}
 		}
 		elseif (isset($_POST['back']))
-			Tools::redirectAdmin($currentIndex.'&id_product='.intval(Tools::getValue('id_product')).'&addproduct'.'&tabs=2&token='.Tools::getValue('token'));
+			Tools::redirectAdmin($currentIndex.'&id_product='.intval(Tools::getValue('id_product')).'&id_category='.intval(Tools::getValue('id_category')).'&addproduct'.'&tabs=2&token='.Tools::getValue('token'));
 		parent::postProcess();
 	}
 
@@ -216,7 +227,7 @@ class AdminAttributeGenerator extends AdminTab
 			</div>';
 		echo '
 			<script type="text/javascript" src="../js/attributesBack.js"></script>
-			<form enctype="multipart/form-data"  method="post" id="generator" action=""'.$currentIndex.'&token='.Tools::getValue('token').'">
+			<form enctype="multipart/form-data" method="post" id="generator" action=""'.$currentIndex.'&id_category='.intval(Tools::getValue('id_category')).'token='.Tools::getValue('token').'">
 				<fieldset style="margin-bottom: 35px;"><legend><img src="../img/admin/asterisk.gif" />'.$this->l('Attributes generator').'</legend>'.
 				$this->l('Add or modify attributes for this product:').'
 					<br /><br />

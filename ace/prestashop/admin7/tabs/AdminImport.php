@@ -7,9 +7,10 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
+
 include_once(PS_ADMIN_DIR.'/../classes/AdminTab.php');
 include_once(PS_ADMIN_DIR.'/../images.inc.php');
 @ini_set('max_execution_time', 0);
@@ -20,7 +21,7 @@ define('UNFRIENDLY_ERROR', false); // Used for validatefields diying without use
 // this value set the number of columns visible on each page
 define('MAX_COLUMNS', 6);
 // correct Mac error on eof
-ini_set('auto_detect_line_endings', '1');
+@ini_set('auto_detect_line_endings', '1');
 
 class AdminImport extends AdminTab
 {
@@ -162,8 +163,8 @@ class AdminImport extends AdminTab
 				'quantity' => 0,
 				'price' => 0,
 				'id_tax' => 0,
-				'description_short' => '', // See class construct
-				'link_rewrite' => '',	
+				'description_short' => array(intval(Configuration::get('PS_LANG_DEFAULT')) => ''),
+				'link_rewrite' => array(intval(Configuration::get('PS_LANG_DEFAULT')) => ''),	
 				);
 				
 				break;
@@ -256,7 +257,7 @@ class AdminImport extends AdminTab
 
 	private static function split($field)
 	{
-		$separator = is_null(Tools::getValue('field_separator')) ? ',' : Tools::getValue('field_separator');
+		$separator = is_null(Tools::getValue('multiple_value_separator')) ? ',' : Tools::getValue('multiple_value_separator');
 		$tab = explode($separator, $field);
 		$res = array_map('strval', $tab);
 		$res = array_map('trim', $tab);
@@ -339,18 +340,57 @@ class AdminImport extends AdminTab
 	{
 		foreach (self::$default_values AS $k => $v)
 			if (!isset($info[$k]) OR $info[$k] == '')
-				$info[$k] = $v;				
+				$info[$k] = $v;
 	}
-	
+
+	private static function setEntityDefaultValues(&$entity)
+	{
+		$members = get_object_vars($entity);
+		foreach (self::$default_values AS $k => $v)
+			if ((array_key_exists($k, $members) AND $entity->$k === NULL) OR !array_key_exists($k, $members))
+				$entity->$k = $v;
+	}
+
 	private static function fillInfo($infos, $key, &$entity)
 	{
 		$entity->{$key} = isset(self::$validators[$key]) ? call_user_func(self::$validators[$key], $infos) : $infos;
+		return true;
 	}
+	
+	static public function array_walk(&$array, $funcname, &$user_data = false)
+	{
+		$func_is_method = false;
+		if (!isset($funcname[1]))
+		{
+			if (!function_exists($funcname[0]))
+			return false;
+		}
+		else
+		{
+			if (!class_exists($funcname[0], true) OR !method_exists($funcname[0], $funcname[1]))
+				return false;
+			else
+				$func_is_method = true;
+		}
+		foreach ($array AS $k => $row)
+		{
+			if ($func_is_method)
+			{
+				if (!call_user_func_array(array($funcname[0], $funcname[1]), array($row, $k, $user_data)))
+					return false;
+			}
+			else
+				if (!call_user_func_array($funcname[0], array($row, $key, $user_data)))
+					return false;
+		}
+		return true;
+	}
+
+
 	
 	private static function copyImg($id_entity, $id_image = NULL, $url, $entity = 'products')
 	{
-		$tmpfile = tempnam("/tmp", "ps_import");
-		$img = array('tmp_name' => $tmpfile);
+		$tmpfile = tempnam(_PS_TMP_IMG_DIR_, 'ps_import');
 		
 		switch($entity)
 		{
@@ -365,16 +405,16 @@ class AdminImport extends AdminTab
 
 		if (@copy($url, $tmpfile))
 		{
-			imageResize($img, $path.'.jpg');
+			imageResize($tmpfile, $path.'.jpg');
 			$imagesTypes = ImageType::getImagesTypes($entity);
 			foreach ($imagesTypes AS $k => $imageType)
-				imageResize($img, $path.'-'.stripslashes($imageType['name']).'.jpg', $imageType['width'], $imageType['height']);
+				imageResize($tmpfile, $path.'-'.stripslashes($imageType['name']).'.jpg', $imageType['width'], $imageType['height']);
 		}
 		else
 		{
+			unlink($tmpfile);
 			return false;
 		}
-		unlink($tmpfile);
 		return true;
 	}	
 
@@ -384,6 +424,7 @@ class AdminImport extends AdminTab
 	
 		$this->receiveTab();
 		$handle = $this->openCsvFile();
+		$defaultLanguageId = intval(Configuration::get('PS_LANG_DEFAULT'));
 		for ($current_line = 0; $line = fgetcsv($handle, MAX_LINE_SIZE, Tools::getValue('separator')); $current_line++)
 		{
 			if (Tools::getValue('convert'))
@@ -392,7 +433,7 @@ class AdminImport extends AdminTab
 			
 			self::setDefaultValues($info);
 			$category = new Category();		
-			array_walk($info, array('AdminImport', 'fillInfo'), $category);
+			self::array_walk($info, array('AdminImport', 'fillInfo'), $category);
 			
 			if (isset($category->parent) AND is_numeric($category->parent))
 			{
@@ -402,7 +443,7 @@ class AdminImport extends AdminTab
 			}
 			elseif (isset($category->parent) AND is_string($category->parent))
 			{
-				$categoryParent = Category::searchByName(1, $category->parent, true);
+				$categoryParent = Category::searchByName($defaultLanguageId, $category->parent, true);
 				if ($categoryParent['id_category'])
 					$category->id_parent =	intval($categoryParent['id_category']);
 				else
@@ -411,15 +452,17 @@ class AdminImport extends AdminTab
 					$categoryToCreate->name = self::createMultiLangField($category->parent);
 					$categoryToCreate->active = 1;
 					$categoryToCreate->id_parent = 1; // Default parent is home for unknown category to create
-					if ($categoryToCreate->validateFields(UNFRIENDLY_ERROR) AND $categoryToCreate->validateFieldsLang(UNFRIENDLY_ERROR))					
-						if ($categoryToCreate->add())
-							$category->id_parent = $categoryToCreate->id;
-						else
-							$this->_errors[] = mysql_error().' '.$categoryToCreate->name[1].(isset($categoryToCreate->id) ? ' ('.$categoryToCreate->id.')' : '').' '.Tools::displayError('cannot be saved');
+					if (($fieldError = $categoryToCreate->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $categoryToCreate->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true AND $categoryToCreate->add())
+						$category->id_parent = $categoryToCreate->id;
+					else
+					{
+						$this->_errors[] = $categoryToCreate->name[$defaultLanguageId].(isset($categoryToCreate->id) ? ' ('.$categoryToCreate->id.')' : '').' '.Tools::displayError('cannot be saved');
+						$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '').mysql_error();
+					}
 				}
 			}
 			
-			if (isset($category->image) and !empty($category->image))
+			if (isset($category->image) AND !empty($category->image))
 				if (!(self::copyImg($category->id, NULL, $category->image, 'categories')))
 					$this->_warnings[] = $category->image.' '.Tools::displayError('cannot be copied');
 			
@@ -427,16 +470,16 @@ class AdminImport extends AdminTab
 			
 			$bak = $category->link_rewrite;
 			if ((isset($category->link_rewrite) AND empty($category->link_rewrite)) OR !$valid_link)
-				$category->link_rewrite = Tools::link_rewrite(Category::hideCategoryPosition($category->name[1]));
+				$category->link_rewrite = Tools::link_rewrite(Category::hideCategoryPosition($category->name[$defaultLanguageId]));
 			if (!$valid_link)
 				$this->_warnings[] = Tools::displayError('Rewrited link for').' '.$bak.(isset($info['id']) ? ' (ID '.$info['id'].') ' : '').' '.Tools::displayError('was re-written as').' '.$category->link_rewrite;
 			
 			$category->link_rewrite = self::createMultiLangField($category->link_rewrite);
 				
 			$res = false;
-			if ($category->validateFields(UNFRIENDLY_ERROR) AND $category->validateFieldsLang(UNFRIENDLY_ERROR))
+			if (($fieldError = $category->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $category->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true)
 			{
-				$categoryAlreadyCreated = Category::searchByName(1, $category->name[1], true);
+				$categoryAlreadyCreated = Category::searchByName($defaultLanguageId, $category->name[$defaultLanguageId], true);
 
 				// If category already in base, get id category back
 				if ($categoryAlreadyCreated['id_category'])
@@ -450,73 +493,96 @@ class AdminImport extends AdminTab
 					$res = $category->update();
 
 				// If no id_category or update failed
-				if (!$res)
-					$res = $category->add();
-			}				
+				if (!$res AND $res = $category->add())
+					$category->addGroups(array(1));
+			}
 			// If both failed, mysql error
 			if (!$res)
-				$this->_errors[] = mysql_error().' '.$info['name'].(isset($info['id']) ? ' (ID '.$info['id'].')' : '').' '.Tools::displayError('cannot be saved');
+			{
+				$this->_errors[] = $info['name'].(isset($info['id']) ? ' (ID '.$info['id'].')' : '').' '.Tools::displayError('cannot be saved');
+				$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '').mysql_error();
+			}
 		}
 		$this->closeCsvFile($handle);
 	}
-	
+
 	public function productImport()
 	{
+		global $cookie;
 		$this->receiveTab();
 		$handle = $this->openCsvFile();
+		$defaultLanguageId = intval(Configuration::get('PS_LANG_DEFAULT'));
+
 		for ($current_line = 0; $line = fgetcsv($handle, MAX_LINE_SIZE, Tools::getValue('separator')); $current_line++)
 		{
+
 			if (Tools::getValue('convert'))
 				$this->utf8_encode_array($line);
 			$info = self::getMaskedRow($line);
-
-			self::setDefaultValues($info);
-			$product = new Product();
-
-			array_walk($info, array('AdminImport', 'fillInfo'), $product);
-			
+			if (array_key_exists('id', $info) AND intval($info['id']) AND Product::existsInDatabase(intval($info['id'])))
+				$product = new Product(intval($info['id']));
+			else
+				$product = new Product();
+			self::setEntityDefaultValues($product);
+			self::array_walk($info, array('AdminImport', 'fillInfo'), $product);
 			// Find id_tax corresponding to given values for product taxe
 			if (isset($product->tax_rate))
 				$product->id_tax = intval(Tax::getTaxIdByRate(floatval($product->tax_rate)));
-			
+
 			if (isset($product->tax_rate) AND !$product->id_tax)
 			{
 				$tax = new Tax();
 				$tax->rate = floatval($product->tax_rate);
 				$tax->name = self::createMultiLangField(strval($product->tax_rate));
-				if ($tax->validateFields(UNFRIENDLY_ERROR) AND $tax->validateFieldsLang(UNFRIENDLY_ERROR))
-					if ($tax->add())
-						$product->id_tax = intval($tax->id);
-					else
-						$this->_errors[] = mysql_error().' TAX '.$tax->name[1].' '.Tools::displayError('cannot be saved');
+				if (($fieldError = $tax->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $tax->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true AND $tax->add())
+					$product->id_tax = intval($tax->id);
+				else
+				{
+					$this->_errors[] = 'TAX '.$tax->name[$defaultLanguageId].' '.Tools::displayError('cannot be saved');
+					$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '').mysql_error();
+				}
 			}
 			
 			if (isset($product->manufacturer) AND is_numeric($product->manufacturer) AND Manufacturer::manufacturerExists(intval($product->manufacturer)))
 				$product->id_manufacturer = intval($product->manufacturer);
 			elseif (isset($product->manufacturer) AND is_string($product->manufacturer) AND !empty($product->manufacturer))
 			{
-				$manufacturer = new Manufacturer();
-				$manufacturer->name = $product->manufacturer;
-				if ($manufacturer->validateFields(UNFRIENDLY_ERROR) AND $manufacturer->validateFieldsLang(UNFRIENDLY_ERROR))
-					if ($manufacturer->add())
+				if ($manufacturer = Manufacturer::getIdByName($product->manufacturer))
+					$product->id_manufacturer = intval($manufacturer);
+				else
+				{
+					$manufacturer = new Manufacturer();
+					$manufacturer->name = $product->manufacturer;
+					if (($fieldError = $manufacturer->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $manufacturer->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true AND $manufacturer->add())
 						$product->id_manufacturer = intval($manufacturer->id);
 					else
-						$this->_errors[] = mysql_error().' '.$manufacturer->name.(isset($manufacturer->id) ? ' ('.$manufacturer->id.')' : '').' '.Tools::displayError('cannot be saved');
+					{
+						$this->_errors[] = $manufacturer->name.(isset($manufacturer->id) ? ' ('.$manufacturer->id.')' : '').' '.Tools::displayError('cannot be saved');
+						$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '').mysql_error();
+					}
+				}
 			}
-			
+
 			if (isset($product->supplier) AND is_numeric($product->supplier) AND Supplier::supplierExists(intval($product->supplier)))
 				$product->id_supplier = intval($product->supplier);
 			elseif (isset($product->supplier) AND is_string($product->supplier) AND !empty($product->supplier))
-			{
-				$supplier = new Supplier();
-				$supplier->name = $product->supplier;
-				if ($supplier->validateFields(UNFRIENDLY_ERROR) AND $supplier->validateFieldsLang(UNFRIENDLY_ERROR))
-					if ($supplier->add())
+			{			
+				if ($supplier = Supplier::getIdByName($product->supplier))
+					$product->id_supplier = intval($supplier);
+				else
+				{
+					$supplier = new Supplier();
+					$supplier->name = $product->supplier;
+					if (($fieldError = $supplier->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $supplier->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true AND $supplier->add())
 						$product->id_supplier = intval($supplier->id);
 					else
-						$this->_errors[] = mysql_error().' '.$supplier->name.(isset($supplier->id) ? ' ('.$supplier->id.')' : '').' '.Tools::displayError('cannot be saved');
+					{
+						$this->_errors[] = $supplier->name.(isset($supplier->id) ? ' ('.$supplier->id.')' : '').' '.Tools::displayError('cannot be saved');
+						$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '').mysql_error();
+					}
+				}
 			}
-			
+
 			if (isset($product->price_tex) AND !isset($product->price_tin))
 				$product->price = $product->price_tex;	
 			elseif (isset($product->price_tin) AND !isset($product->price_tex))
@@ -546,17 +612,18 @@ class AdminImport extends AdminTab
 							$categoryToCreate->name = self::createMultiLangField($value);
 							$categoryToCreate->active = 1;
 							$categoryToCreate->id_parent = 1; // Default parent is home for unknown category to create
-							if ($categoryToCreate->validateFields(UNFRIENDLY_ERROR) AND $categoryToCreate->validateFieldsLang(UNFRIENDLY_ERROR))
-								if ($categoryToCreate->add())
-									$product->id_category[] = intval($categoryToCreate->id);
-								else
-									$this->_errors[] = mysql_error().' '.$categoryToCreate->name[1].(isset($categoryToCreate->id) ? ' ('.$categoryToCreate->id.')' : '').' '.Tools::displayError('cannot be saved');
-							
+							if (($fieldError = $categoryToCreate->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $categoryToCreate->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true AND $categoryToCreate->add())
+								$product->id_category[] = intval($categoryToCreate->id);
+							else
+							{
+								$this->_errors[] = $categoryToCreate->name[$defaultLanguageId].(isset($categoryToCreate->id) ? ' ('.$categoryToCreate->id.')' : '').' '.Tools::displayError('cannot be saved');
+								$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '').mysql_error();
+							}
 						}	
 					}
 					elseif (is_string($value) AND !empty($value))
 					{
-						$category = Category::searchByName(1, $value, true);
+						$category = Category::searchByName($defaultLanguageId, $value, true);
 						if ($category['id_category'])
 						{
 							$product->id_category[] =	intval($category['id_category']);
@@ -567,84 +634,92 @@ class AdminImport extends AdminTab
 							$categoryToCreate->name = self::createMultiLangField($value);
 							$categoryToCreate->active = 1;
 							$categoryToCreate->id_parent = 1; // Default parent is home for unknown category to create
-							if ($categoryToCreate->validateFields(UNFRIENDLY_ERROR) AND $categoryToCreate->validateFieldsLang(UNFRIENDLY_ERROR))
-								if ($categoryToCreate->add())
-									$product->id_category[] = intval($categoryToCreate->id);
-								else
-									$this->_errors[] = mysql_error().' '.$categoryToCreate->name[1].(isset($categoryToCreate->id) ? ' ('.$categoryToCreate->id.')' : '').' '.Tools::displayError('cannot be saved');
+							if (($fieldError = $categoryToCreate->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $categoryToCreate->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true AND $categoryToCreate->add())
+								$product->id_category[] = intval($categoryToCreate->id);
+							else
+							{
+								$this->_errors[] = $categoryToCreate->name[$defaultLanguageId].(isset($categoryToCreate->id) ? ' ('.$categoryToCreate->id.')' : '').' '.Tools::displayError('cannot be saved');
+								$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '').mysql_error();
+							}
 						}
 					}
 				}
 			}
 
-			$product->id_category_default = isset($product->id_category[0]) ? intval($product->id_category[0]) : '';
-
-			if (isset($product->tags) AND !empty($product->tags))
-			{
-				$tag = new Tag();
-				$array = self::createMultiLangField($product->tags);
-				foreach ($array AS $key => $tags)
-				{
-					$tag->addTags($key, $product->id, $tags);
-				}
-			}
-			
-			if (isset($product->image) AND is_array($product->image) and sizeof($product->image))
-			{
-				foreach ($product->image AS $key => $url)
-				{
-					$image = new Image();
-					$image->id_product = intval($product->id);
-					$image->position = Image::getHighestPosition($product->id) + 1;
-					$image->cover = !$key ? true : false;
-					$image->legend = self::createMultiLangField($product->name[1]);
-					if ($image->validateFields(UNFRIENDLY_ERROR) AND $image->validateFieldsLang(UNFRIENDLY_ERROR))
-						if ($image->add())
-							self::copyImg($product->id, $image->id, $url);
-						else
-							$this->_warnings[] = mysql_error().' '.$image->legend[1].(isset($image->id_product) ? ' ('.$image->id_product.')' : '').' '.Tools::displayError('cannot be saved');
-				}			
-			}
-			
-			$valid_link = Validate::isLinkRewrite($product->link_rewrite);
+			$product->id_category_default = isset($product->id_category[0]) ? intval($product->id_category[0]) : '';			
+			$link_rewrite = is_array($product->link_rewrite) ? $product->link_rewrite[$defaultLanguageId] : '';
+			$valid_link = Validate::isLinkRewrite($link_rewrite);
 			
 			$bak = $product->link_rewrite;
-			if ((isset($product->link_rewrite) AND empty($product->link_rewrite)) OR !$valid_link)
-				$product->link_rewrite = Tools::link_rewrite($product->name[1]);
+			if ((isset($product->link_rewrite[$defaultLanguageId]) AND empty($product->link_rewrite[$defaultLanguageId])) OR !$valid_link)
+				$link_rewrite = Tools::link_rewrite($product->name[$defaultLanguageId]);
 			if (!$valid_link)
-				$this->_warnings[] = Tools::displayError('Rewrited link for'). ' '.$bak.(isset($info['id']) ? ' (ID '.$info['id'].') ' : '').' '.Tools::displayError('was re-written as').' '.$product->link_rewrite;
+				$this->_warnings[] = Tools::displayError('Rewrited link for'). ' '.$bak.(isset($info['id']) ? ' (ID '.$info['id'].') ' : '').' '.Tools::displayError('was re-written as').' '.$link_rewrite;
 		
-			$product->link_rewrite = self::createMultiLangField($product->link_rewrite);
+			$product->link_rewrite = self::createMultiLangField($link_rewrite);
 			
 			$res = false;
-			if ($product->validateFields(UNFRIENDLY_ERROR) AND $product->validateFieldsLang(UNFRIENDLY_ERROR))
+			if (($fieldError = $product->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $product->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true)
 			{
 				// If id product AND id product already in base, trying to update
-				if ($product->id AND $product->productExists(intval($product->id)))
+				if ($product->id AND Product::existsInDatabase(intval($product->id)))
+				{
+					$datas = Db::getInstance()->getRow('SELECT `date_add` FROM `'._DB_PREFIX_.'product` WHERE `id_product` = '.intval($product->id));
+					$product->date_add = pSQL($datas['date_add']);
 					$res = $product->update();
+				}
 				// If no id_product or update failed
 				if (!$res)
 					$res = $product->add();
 			}
 			// If both failed, mysql error
 			if (!$res)
-				$this->_errors[] = mysql_error().' '.$info['name'].(isset($info['id']) ? ' (ID '.$info['id'].')' : '').' '.Tools::displayError('cannot be saved');
+			{
+				$this->_errors[] = $info['name'].(isset($info['id']) ? ' (ID '.$info['id'].')' : '').' '.Tools::displayError('cannot be saved');
+				$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '').mysql_error();
+			}
 			else
 			{
-				$product->updateCategories(array_map('intval', $product->id_category));
+				if (isset($product->tags) AND !empty($product->tags))
+				{
+					$tag = new Tag();
+					$array = self::createMultiLangField($product->tags);
+					foreach ($array AS $key => $tags)
+						$a = $tag->addTags($key, $product->id, $tags);
+				}
+
+				if (isset($product->image) AND is_array($product->image) and sizeof($product->image))
+				{
+					$productHasImages = (bool)Image::getImages(intval($cookie->id_lang), intval($product->id));
+					foreach ($product->image AS $key => $url)
+						if (!empty($url))
+						{
+							$image = new Image();
+							$image->id_product = intval($product->id);
+							$image->position = Image::getHighestPosition($product->id) + 1;
+							$image->cover = (!$key AND !$productHasImages) ? true : false;
+							$image->legend = self::createMultiLangField($product->name[$defaultLanguageId]);
+							if (($fieldError = $image->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $image->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true AND $image->add())
+								self::copyImg($product->id, $image->id, $url);
+							else
+							{
+								$this->_warnings[] = $image->legend[$defaultLanguageId].(isset($image->id_product) ? ' ('.$image->id_product.')' : '').' '.Tools::displayError('cannot be saved');
+								$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '').mysql_error();
+							}
+						}
+				}
+				if (isset($product->id_category))
+					$product->updateCategories(array_map('intval', $product->id_category));
 				
 				$features = get_object_vars($product);
-				
 				foreach ($features AS $feature => $value)
-				{
-					if (!strncmp($feature, '#F_', 3))
+					if (!strncmp($feature, '#F_', 3) AND Tools::strlen($product->{$feature}))
 					{
 						$feature_name = str_replace('#F_', '', $feature);
-						$id_feature = Feature::addFeatureImport(Tools::strtolower($feature_name));
+						$id_feature = Feature::addFeatureImport($feature_name);
 						$id_feature_value = FeatureValue::addFeatureValueImport($id_feature, $product->{$feature});
 						Product::addFeatureProductImport($product->id, $id_feature, $id_feature_value);
 					}
-				}
 			}	
 		}
 		$this->closeCsvFile($handle);
@@ -658,11 +733,11 @@ class AdminImport extends AdminTab
 			$groups[$group['name']] = $group['id_attribute_group'];
 		$attributes = array();
 		foreach (Attribute::getAttributes($defaultLanguage) as $attribute)
-			$attributes[$attribute['attribute']] = $attribute['id_attribute'];
+			$attributes[$attribute['name'].'_'.$attribute['id_attribute']] = $attribute['id_attribute'];
 		
 		$this->receiveTab();
 		$handle = $this->openCsvFile();
-		$fsep = Tools::getValue('field_separator');
+		$fsep = Tools::getValue('multiple_value_separator');
 		for ($current_line = 0; $line = fgetcsv($handle, MAX_LINE_SIZE, Tools::getValue('separator')); $current_line++)
 		{
 			if (Tools::getValue('convert'))
@@ -672,7 +747,7 @@ class AdminImport extends AdminTab
 			
 			self::setDefaultValues($info);
 			$product = new Product(intval($info['id_product']), false, $defaultLanguage);
-			$id_product_attribute = $product->addProductAttribute(floatval($info['price']), floatval($info['weight']), floatval($info['ecotax']), intval($info['quantity']), null, strval($info['reference']), strval($info['supplier_reference']), strval($info['ean13']), intval($info['default_on']), strval($info['location']));
+			$id_product_attribute = $product->addProductAttribute(floatval($info['price']), floatval($info['weight']), floatval($info['ecotax']), intval($info['quantity']), null, strval($info['reference']), strval($info['supplier_reference']), strval($info['ean13']), intval($info['default_on']));
 			foreach (explode($fsep, $info['options']) as $option)
 			{
 				list($group, $attribute) = array_map('trim', explode(':', $option));
@@ -682,24 +757,28 @@ class AdminImport extends AdminTab
 					$obj->is_color_group = false;
 					$obj->name[$defaultLanguage] = $group;
 					$obj->public_name[$defaultLanguage] = $group;
-					if ($obj->validateFields(UNFRIENDLY_ERROR) AND $obj->validateFieldsLang(UNFRIENDLY_ERROR))
+					if (($fieldError = $obj->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $obj->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true)
 					{
 						$obj->add();
 						$groups[$group] = $obj->id;
 					}
+					else
+						$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '');
 				}
-				if (!isset($attributes[$attribute]))
+				if (!isset($attributes[$group.'_'.$attribute]))
 				{
 					$obj = new Attribute();
 					$obj->id_attribute_group = $groups[$group];
 					$obj->name[$defaultLanguage] = $attribute;
-					if ($obj->validateFields(UNFRIENDLY_ERROR) AND $obj->validateFieldsLang(UNFRIENDLY_ERROR))
+					if (($fieldError = $obj->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $obj->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true)
 					{
 						$obj->add();
-						$attributes[$attribute] = $obj->id;
+						$attributes[$group.'_'.$attribute] = $obj->id;
 					}
+					else
+						$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '');
 				}
-				Db::getInstance()->Execute('INSERT INTO '._DB_PREFIX_.'product_attribute_combination (id_attribute, id_product_attribute) VALUES ('.intval($attributes[$attribute]).','.intval($id_product_attribute).')');
+				Db::getInstance()->Execute('INSERT INTO '._DB_PREFIX_.'product_attribute_combination (id_attribute, id_product_attribute) VALUES ('.intval($attributes[$group.'_'.$attribute]).','.intval($id_product_attribute).')');
 			}
 		}
 		$this->closeCsvFile($handle);
@@ -716,22 +795,27 @@ class AdminImport extends AdminTab
 			$info = self::getMaskedRow($line);
 			
 			self::setDefaultValues($info);
-			$customer = new Customer();		
-			array_walk($info, array('AdminImport', 'fillInfo'), $customer);
+			$customer = new Customer();
+			self::array_walk($info, array('AdminImport', 'fillInfo'), $customer);
 			
 			if ($customer->passwd)
 				$customer->passwd = md5(_COOKIE_KEY_.$customer->passwd);
 				
 			$res = false;
-			if ($customer->validateFields(UNFRIENDLY_ERROR) AND $customer->validateFieldsLang(UNFRIENDLY_ERROR))
-			{								
+			if (($fieldError = $customer->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $customer->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true)
+			{
 				if ($customer->id AND $customer->customerIdExists($customer->id))
 					$res = $customer->update();
 				if (!$res)
 					$res = $customer->add();
+				if ($res)
+					$customer->addGroups(array(1));
 			}
 			if (!$res)
-					$this->_errors[] = mysql_error().' '.$info['email'].(isset($info['id']) ? ' (ID '.$info['id'].')' : '').' '.Tools::displayError('cannot be saved');
+			{
+				$this->_errors[] = $info['email'].(isset($info['id']) ? ' (ID '.$info['id'].')' : '').' '.Tools::displayError('cannot be saved');
+				$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '').mysql_error();
+			}
 		}
 		$this->closeCsvFile($handle);
 	}
@@ -747,13 +831,13 @@ class AdminImport extends AdminTab
 			$info = self::getMaskedRow($line);
 			
 			self::setDefaultValues($info);
-			$address = new Address();		
-			array_walk($info, array('AdminImport', 'fillInfo'), $address);
+			$address = new Address();
+			self::array_walk($info, array('AdminImport', 'fillInfo'), $address);
 			
 			if (isset($address->country) AND is_numeric($address->country))
 			{
-				if (Country::getNameById(intval($address->country), Configuration::get('PS_LANG_DEFAULT')))
-					$address->id_country = intval($address->country);				
+				if (Country::getNameById(Configuration::get('PS_LANG_DEFAULT'), intval($address->country)))
+					$address->id_country = intval($address->country);
 			}
 			elseif(isset($address->country) AND is_string($address->country) AND !empty($address->country))
 			{
@@ -767,18 +851,20 @@ class AdminImport extends AdminTab
 					$country->id_zone = 0; // Default zone for country to create
 					$country->iso_code = strtoupper(substr($address->country, 0, 2)); // Default iso for country to create
 					$country->contains_states = 0; // Default value for country to create
-					if ($country->validateFields(UNFRIENDLY_ERROR) AND $country->validateFieldsLang(UNFRIENDLY_ERROR))
-						if ($country->add())
-							$address->id_country = intval($country->id);
-						else
-							$this->_errors[] = mysql_error().' '.$country->name[1].' '.Tools::displayError('cannot be saved');
+					if (($fieldError = $country->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $country->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true AND $country->add())
+						$address->id_country = intval($country->id);
+					else
+					{
+						$this->_errors[] = $country->name[$defaultLanguageId].' '.Tools::displayError('cannot be saved');
+						$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '').mysql_error();
+					}
 				}
 			}
 					
 			if (isset($address->state) AND is_numeric($address->state))
 			{
 				if (State::getNameById(intval($address->state)))
-					$address->id_state = intval($address->state);				
+					$address->id_state = intval($address->state);
 			}
 			elseif(isset($address->state) AND is_string($address->state) AND !empty($address->state))
 			{
@@ -793,11 +879,13 @@ class AdminImport extends AdminTab
 					$state->id_zone = 0; // Default zone for state to create
 					$state->iso_code = strtoupper(substr($address->state, 0, 2)); // Default iso for state to create
 					$state->tax_behavior = 0;
-					if ($state->validateFields(UNFRIENDLY_ERROR) AND $state->validateFieldsLang(UNFRIENDLY_ERROR))
-						if ($state->add())
-							$address->id_state = intval($state->id);
-						else
-							$this->_errors[] = mysql_error().' '.$state->name.' '.Tools::displayError('cannot be saved');					
+					if (($fieldError = $state->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $state->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true AND $state->add())
+						$address->id_state = intval($state->id);
+					else
+					{
+						$this->_errors[] = $state->name.' '.Tools::displayError('cannot be saved');
+						$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '').mysql_error();
+					}
 				}
 			}
 					
@@ -816,11 +904,13 @@ class AdminImport extends AdminTab
 			{
 				$manufacturer = new Manufacturer();
 				$manufacturer->name = $address->manufacturer;
-				if ($manufacturer->validateFields(UNFRIENDLY_ERROR) AND $manufacturer->validateFieldsLang(UNFRIENDLY_ERROR))
-					if ($manufacturer->add())
-						$address->id_manufacturer = intval($manufacturer->id);
-					else
-						$this->_errors[] = mysql_error().' '.$manufacturer->name.(isset($manufacturer->id) ? ' ('.$manufacturer->id.')' : '').' '.Tools::displayError('cannot be saved');
+				if (($fieldError = $manufacturer->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $manufacturer->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true AND $manufacturer->add())
+					$address->id_manufacturer = intval($manufacturer->id);
+				else
+				{
+					$this->_errors[] = mysql_error().' '.$manufacturer->name.(isset($manufacturer->id) ? ' ('.$manufacturer->id.')' : '').' '.Tools::displayError('cannot be saved');
+					$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '').mysql_error();
+				}
 			}
 			
 			if (isset($address->supplier) AND is_numeric($address->supplier) AND Supplier::supplierExists(intval($address->supplier)))
@@ -829,15 +919,17 @@ class AdminImport extends AdminTab
 			{
 				$supplier = new Supplier();
 				$supplier->name = $address->supplier;
-				if ($supplier->validateFields(UNFRIENDLY_ERROR) AND $supplier->validateFieldsLang(UNFRIENDLY_ERROR))
-					if ($supplier->add())
-						$address->id_supplier = intval($supplier->id);
-					else
-						$this->_errors[] = mysql_error().' '.$supplier->name.(isset($supplier->id) ? ' ('.$supplier->id.')' : '').' '.Tools::displayError('cannot be saved');
+				if (($fieldError = $supplier->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $supplier->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true AND $supplier->add())
+					$address->id_supplier = intval($supplier->id);
+				else
+				{
+					$this->_errors[] = mysql_error().' '.$supplier->name.(isset($supplier->id) ? ' ('.$supplier->id.')' : '').' '.Tools::displayError('cannot be saved');
+					$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '').mysql_error();
+				}
 			}
 
 			$res = false;
-			if ($address->validateFields(UNFRIENDLY_ERROR) AND $address->validateFieldsLang(UNFRIENDLY_ERROR))
+			if (($fieldError = $address->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $address->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true)
 			{				
 				if ($address->id AND $address->addressExists($address->id))
 					$res = $address->update();					
@@ -845,7 +937,10 @@ class AdminImport extends AdminTab
 					$res = $address->add();
 			}
 			if (!$res)
-					$this->_errors[] = mysql_error().' '.$info['alias'].(isset($info['id']) ? ' (ID '.$info['id'].')' : '').' '.Tools::displayError('cannot be saved');
+			{
+				$this->_errors[] = $info['alias'].(isset($info['id']) ? ' (ID '.$info['id'].')' : '').' '.Tools::displayError('cannot be saved');
+				$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '').mysql_error();
+			}
 		}
 		$this->closeCsvFile($handle);
 	}
@@ -862,10 +957,10 @@ class AdminImport extends AdminTab
 			
 			self::setDefaultValues($info);
 			$manufacturer = new Manufacturer();		
-			array_walk($info, array('AdminImport', 'fillInfo'), $manufacturer);
+			self::array_walk($info, array('AdminImport', 'fillInfo'), $manufacturer);
 			
 			$res = false;				
-			if ($manufacturer->validateFields(UNFRIENDLY_ERROR) AND $manufacturer->validateFieldsLang(UNFRIENDLY_ERROR))
+			if (($fieldError = $manufacturer->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $manufacturer->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true)
 			{								
 				if ($manufacturer->id AND $manufacturer->manufacturerExists($manufacturer->id))
 					$res = $manufacturer->update();
@@ -873,7 +968,10 @@ class AdminImport extends AdminTab
 					$res = $manufacturer->add();
 			}
 			if (!$res)
-				$this->_errors[] = mysql_error().' '.$info['name'].(isset($info['id']) ? ' (ID '.$info['id'].')' : '').' '.Tools::displayError('cannot be saved');			
+			{
+				$this->_errors[] = mysql_error().' '.$info['name'].(isset($info['id']) ? ' (ID '.$info['id'].')' : '').' '.Tools::displayError('cannot be saved');
+				$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '').mysql_error();
+			}
 		}
 		$this->closeCsvFile($handle);
 	}
@@ -890,9 +988,9 @@ class AdminImport extends AdminTab
 			
 			self::setDefaultValues($info);
 			$supplier = new Supplier();		
-			array_walk($info, array('AdminImport', 'fillInfo'), $supplier);
+			self::array_walk($info, array('AdminImport', 'fillInfo'), $supplier);
 			
-			if ($supplier->validateFields(UNFRIENDLY_ERROR) AND $supplier->validateFieldsLang(UNFRIENDLY_ERROR))
+			if (($fieldError = $supplier->validateFields(UNFRIENDLY_ERROR, true)) === true AND ($langFieldError = $supplier->validateFieldsLang(UNFRIENDLY_ERROR, true)) === true)
 			{				
 				$res = false;				
 				if ($supplier->id AND $supplier->supplierExists($supplier->id))
@@ -900,10 +998,13 @@ class AdminImport extends AdminTab
 				if (!$res)
 					$res = $supplier->add();	
 				if (!$res)
-					$this->_errors[] = mysql_error().' '.$info['name'].(isset($info['id']) ? ' (ID '.$info['id'].')' : '').' '.Tools::displayError('cannot be saved');					
+					$this->_errors[] = mysql_error().' '.$info['name'].(isset($info['id']) ? ' (ID '.$info['id'].')' : '').' '.Tools::displayError('cannot be saved');
 			}
 			else
+			{
 				$this->_errors[] = $this->l('Supplier not valid').' ('.$supplier->name.')';
+				$this->_errors[] = ($fieldError !== true ? $fieldError : '').($langFieldError !== true ? $langFieldError : '');
+			}
 		}
 		$this->closeCsvFile($handle);
 	}
@@ -939,6 +1040,9 @@ class AdminImport extends AdminTab
 				<div class="margin-form">
 					<input type="submit" name="submitFileUpload" value="'.$this->l('Upload').'" class="button" />
 				</div>
+				<div class="margin-form">
+					'.$this->l('Allowed files are only UTF-8 and iso-8859-1 encoded ones').'
+				</div>
 			</form>
 		</fieldset>';
 		
@@ -967,17 +1071,19 @@ class AdminImport extends AdminTab
 				echo '<option value="'.$filename.'">'.$filename.'</option>';
 		echo '				</select>
 						</div>
-						<label class="clear">'.$this->l('Column separator:').' </label>
-						<div class="margin-form">
-							<input type="text" size="2" value=";" name="separator"/>
-						</div>	
-						<label class="clear">'.$this->l('Field separator:').' </label>
-						<div class="margin-form">
-							<input type="text" size="2" value="," name="field_separator"/>
-						</div>								
-						<label for="convert" class="clear">'.$this->l('Convert file to Unicode?').' </label>
+						<label for="convert" class="clear">'.$this->l('iso-8859-1 encoded file').' </label>
 						<div class="margin-form">
 							<input name="convert" id="convert" type="checkbox" style="margin-top: 6px;"/>
+						</div>
+						<label class="clear">'.$this->l('Field separator:').' </label>
+						<div class="margin-form">
+							<input type="text" size="2" value=";" name="separator"/>
+							'.$this->l('e.g. ').'"1<span class="bold" style="color: red">;</span>Ipod<span class="bold" style="color: red">;</span>129.90<span class="bold" style="color: red">;</span>5"
+						</div>	
+						<label class="clear">'.$this->l('Multiple value separator:').' </label>
+						<div class="margin-form">
+							<input type="text" size="2" value="," name="multiple_value_separator"/>
+							'.$this->l('e.g. ').'"Ipod;red.jpg<span class="bold" style="color: red">,</span>blue.jpg<span class="bold" style="color: red">,</span>green.jpg;129.90"
 						</div>
 						<label for="truncate" class="clear">'.$this->l('Delete all').' <span id="entitie">'.$this->l('categories').'</span> '.$this->l('before import ?').' </label>
 						<div class="margin-form">
@@ -985,6 +1091,9 @@ class AdminImport extends AdminTab
 						</div>					
 						<div class="space margin-form">
 							<input type="submit" name="submitImportFile" value="'.$this->l('Next step').'" class="button"/>
+						</div>
+						<div>
+							'.$this->l('Note that the category import does not support categories of the same name').'
 						</div>
 					</fieldset>
 				</form>
@@ -1023,7 +1132,7 @@ class AdminImport extends AdminTab
 	public function utf8_encode_array(&$array) 
 	{
 	    if (is_array($array))
-			array_walk($array, array(get_class($this), 'utf8_encode_array'));
+			self::array_walk($array, array(get_class($this), 'utf8_encode_array'));
 		else
 			$array = utf8_encode($array);
 	}
@@ -1037,7 +1146,7 @@ class AdminImport extends AdminTab
 	
 	private function openCsvFile()
 	{
-		$handle = @fopen(dirname(__FILE__).'/../import/'.Tools::getValue('csv'), 'r');
+		$handle = fopen(dirname(__FILE__).'/../import/'.Tools::getValue('csv'), 'r');
 		if (!$handle)
 			die(Tools::displayError('Cannot read the csv file'));
 			
@@ -1070,7 +1179,7 @@ class AdminImport extends AdminTab
 		echo '
 			</tr>';
 		ob_flush();
-		ob_clean ();
+		ob_clean();
 		
 		/* Datas */
 		for ($current_line = 0; $current_line < 10 AND $line = fgetcsv($handle, MAX_LINE_SIZE, $glue); $current_line++)
@@ -1123,7 +1232,7 @@ class AdminImport extends AdminTab
 			echo '<input type="hidden" name="truncate" value="1" />';
 		echo '
 			<input type="hidden" name="separator" value="'.strval(trim(Tools::getValue('separator'))).'">
-			<input type="hidden" name="field_separator" value="'.strval(trim(Tools::getValue('field_separator'))).'">
+			<input type="hidden" name="multiple_value_separator" value="'.strval(trim(Tools::getValue('multiple_value_separator'))).'">
 			<script type="text/javascript">
 				var current = 0;
 				function showTable(nb)
@@ -1176,7 +1285,7 @@ class AdminImport extends AdminTab
 				Db::getInstance()->Execute('DELETE FROM `'._DB_PREFIX_.'category_lang` WHERE id_category != 1');
 				Db::getInstance()->Execute('ALTER TABLE `'._DB_PREFIX_.'category` AUTO_INCREMENT = 2 ');
 				foreach (scandir(_PS_CAT_IMG_DIR_) AS $d)
-					if (ereg('^[0-9]+\-(.*)\.jpg$', $d) OR ereg('^([[:lower:]]{2})\-default\-(.*)\.jpg$', $d))
+					if (preg_match('/^[0-9]+\-(.*)\.jpg$/', $d) OR preg_match('/^([[:lower:]]{2})\-default\-(.*)\.jpg$/', $d))
 						unlink(_PS_CAT_IMG_DIR_.$d);
 				break;
 			case $this->entities[$this->l('Products')]:
@@ -1187,7 +1296,7 @@ class AdminImport extends AdminTab
 				Db::getInstance()->Execute('TRUNCATE TABLE `'._DB_PREFIX_.'image');
 				Db::getInstance()->Execute('TRUNCATE TABLE `'._DB_PREFIX_.'image_lang');
 				foreach (scandir(_PS_PROD_IMG_DIR_) AS $d)
-					if (ereg('^[0-9]+\-[0-9]+\-(.*)\.jpg$', $d) OR ereg('^([[:lower:]]{2})\-default\-(.*)\.jpg$', $d))
+					if (preg_match('/^[0-9]+\-[0-9]+\-(.*)\.jpg$/', $d) OR preg_match('/^([[:lower:]]{2})\-default\-(.*)\.jpg$/', $d))
 						unlink(_PS_PROD_IMG_DIR_.$d);
 				break;
 			case $this->entities[$this->l('Customers')]:
@@ -1210,14 +1319,14 @@ class AdminImport extends AdminTab
 				Db::getInstance()->Execute('TRUNCATE TABLE `'._DB_PREFIX_.'manufacturer');
 				Db::getInstance()->Execute('TRUNCATE TABLE `'._DB_PREFIX_.'manufacturer_lang');
 				foreach (scandir(_PS_MANU_IMG_DIR_) AS $d)
-					if (ereg('^[0-9]+\-(.*)\.jpg$', $d) OR ereg('^([[:lower:]]{2})\-default\-(.*)\.jpg$', $d))
+					if (preg_match('/^[0-9]+\-(.*)\.jpg$/', $d) OR preg_match('/^([[:lower:]]{2})\-default\-(.*)\.jpg$/', $d))
 						unlink(_PS_MANU_IMG_DIR_.$d);
 				break;
 			case $this->entities[$this->l('Suppliers')]:
 				Db::getInstance()->Execute('TRUNCATE TABLE `'._DB_PREFIX_.'supplier');
 				Db::getInstance()->Execute('TRUNCATE TABLE `'._DB_PREFIX_.'supplier_lang');
 				foreach (scandir(_PS_SUPP_IMG_DIR_) AS $d)
-					if (ereg('^[0-9]+\-(.*)\.jpg$', $d) OR ereg('^([[:lower:]]{2})\-default\-(.*)\.jpg$', $d))
+					if (preg_match('/^[0-9]+\-(.*)\.jpg$/', $d) OR preg_match('/^([[:lower:]]{2})\-default\-(.*)\.jpg$/', $d))
 						unlink(_PS_SUPP_IMG_DIR_.$d);
 				break;
 		}
@@ -1243,7 +1352,7 @@ class AdminImport extends AdminTab
 		{
 			if (Tools::getValue('truncate'))
 				$this->truncateTables(intval(Tools::getValue('entity')));
-			
+
 			switch (intval(Tools::getValue('entity')))
 			{
 				case $this->entities[$this->l('Categories')]:

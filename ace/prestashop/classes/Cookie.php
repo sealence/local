@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -65,9 +65,9 @@ class	Cookie
 	{
 		$r = '!(?:(\w+)://)?(?:(\w+)\:(\w+)@)?([^/:]+)?(?:\:(\d*))?([^#?]+)?(?:\?([^#]+))?(?:#(.+$))?!i';
 	    preg_match ($r, $_SERVER['HTTP_HOST'], $out);
-		if (ereg("^(((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]{1}[0-9]|[1-9]).)". 
-         "{1}((25[0-5]|2[0-4][0-9]|[1]{1}[0-9]{2}|[1-9]{1}[0-9]|[0-9]).)". 
-         "{2}((25[0-5]|2[0-4][0-9]|[1]{1}[0-9]{2}|[1-9]{1}[0-9]|[0-9]){1}))$", $out[4]))
+		if (preg_match('/^(((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]{1}[0-9]|[1-9]).)'. 
+         '{1}((25[0-5]|2[0-4][0-9]|[1]{1}[0-9]{2}|[1-9]{1}[0-9]|[0-9]).)'. 
+         '{2}((25[0-5]|2[0-4][0-9]|[1]{1}[0-9]{2}|[1-9]{1}[0-9]|[0-9]){1}))$/', $out[4]))
 			return false;
 		if (!strstr($_SERVER['HTTP_HOST'], '.'))
 			return false;
@@ -194,7 +194,16 @@ class	Cookie
 		unset($this->_content['logged']);
 		unset($this->_content['email']);
 		unset($this->_content['id_cart']);
+		unset($this->_content['id_address_invoice']);
+		unset($this->_content['id_address_delivery']);
 		$this->write();
+	}
+	
+	function makeNewLog()
+	{
+		unset($this->_content['id_customer']);
+		unset($this->_content['id_guest']);
+		Guest::setNewGuest($this);
 	}
 
 	/**

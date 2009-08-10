@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -36,7 +36,10 @@ class		OrderState extends ObjectModel
 	
 	/** @var boolean Delivery */
 	public		$delivery;
-	
+
+	/** @var boolean Hidden */
+	public		$hidden;
+
  	protected 	$fieldsValidate = array('send_email' => 'isBool', 'invoice' => 'isBool', 'color' => 'isColor', 'logable' => 'isBool');
 	protected 	$fieldsRequiredLang = array('name');
  	protected 	$fieldsSizeLang = array('name' => 64, 'template' => 64);
@@ -54,6 +57,7 @@ class		OrderState extends ObjectModel
 		$fields['unremovable'] = intval($this->unremovable);
 		$fields['logable'] = intval($this->logable);
 		$fields['delivery'] = intval($this->delivery);
+		$fields['hidden'] = intval($this->hidden);
 		return $fields;
 	}
 	

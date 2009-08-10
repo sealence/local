@@ -1,5 +1,16 @@
 <?php
 
+/**
+  * Invoice tab for admin panel, AdminInvoices.php
+  * @category admin
+  *
+  * @author PrestaShop <support@prestashop.com>
+  * @copyright PrestaShop
+  * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
+  * @version 1.2
+  *
+  */
+
 class AdminInvoices extends AdminTab
 {
 	public function __construct()
@@ -64,7 +75,7 @@ class AdminInvoices extends AdminTab
 				$this->_errors[] = $this->l('Invalid end date');
 			if (!sizeof($this->_errors))
 			{
-				$orders = Order::getOrdersIdByDate($_POST['date_from'], $_POST['date_to'], NULL, 'invoice');
+				$orders = Order::getOrdersIdInvoiceByDate($_POST['date_from'], $_POST['date_to'], NULL, 'invoice');
 				if (sizeof($orders))
 					Tools::redirectAdmin('pdf.php?invoices='.urlencode(serialize($orders)).'&token='.$this->token);
 				else

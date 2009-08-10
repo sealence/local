@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -98,7 +98,8 @@ class		Language extends ObjectModel
 			'payment_error.html',			'payment_error.txt',
 			'preparation.html',				'preparation.txt',
 			'refund.html',					'refund.txt',
-			'shipping.html',				'shipping.txt',
+			'shipped.html',					'shipped.txt',
+			'in_transit.txt',				'in_transit.html',
 			'test.html',					'test.txt',
 			'voucher.html',					'voucher.txt',
 		);
@@ -145,7 +146,6 @@ class		Language extends ObjectModel
 				$modDir = _PS_MODULE_DIR_.$mod;
 				if (file_exists($modDir.'/'.strval($iso_from).'.php'))
 					$files_modules[$modDir.'/'.strval($iso_from).'.php'] = ($copy ? $modDir.'/'.strval($iso_to).'.php' : ++$number);
-				
 				// Mails files
 				$modMailDirFrom = $modDir.'/mails/'.strval($iso_from);
 				$modMailDirTo = $modDir.'/mails/'.strval($iso_to);

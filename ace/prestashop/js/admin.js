@@ -5,13 +5,16 @@ function str2url(str,encoding,ucfirst)
 	str = str.toUpperCase();
 	str = str.toLowerCase();
 
-	str = str.replace(/[\u00E0\u00E1\u00E2\u00E3\u00E4\u00E5]/g,'a');
-	str = str.replace(/[\u00E7]/g,'c');
-	str = str.replace(/[\u00E8\u00E9\u00EA\u00EB]/g,'e');
+	str = str.replace(/[\u0105\u0104\u00E0\u00E1\u00E2\u00E3\u00E4\u00E5]/g,'a');
+	str = str.replace(/[\u00E7\u0107\u0106]/g,'c');
+	str = str.replace(/[\u00E8\u00E9\u00EA\u00EB\u0119\u0118]/g,'e');
 	str = str.replace(/[\u00EC\u00ED\u00EE\u00EF]/g,'i');
-	str = str.replace(/[\u00F2\u00F3\u00F4\u00F5\u00F6\u00F8]/g,'o');
+	str = str.replace(/[\u0142\u0141]/g,'l');
+	str = str.replace(/[\u00F2\u00F3\u00F4\u00F5\u00F6\u00F8\u00D3]/g,'o');
+	str = str.replace(/[\u015B\u015A]/g,'s');
 	str = str.replace(/[\u00F9\u00FA\u00FB\u00FC]/g,'u');
 	str = str.replace(/[\u00FD\u00FF]/g,'y');
+	str = str.replace(/[\u017C\u017A\u017B\u0179]/g,'z');
 	str = str.replace(/[\u00F1]/g,'n');
 	str = str.replace(/[\u0153]/g,'oe');
 	str = str.replace(/[\u00E6]/g,'ae');
@@ -162,49 +165,58 @@ function addAccessory()
 {
 	var valueToAdd = $('#selectAccessories').val();
 	
-	if(valueToAdd == '0')
+	if (valueToAdd == '0')
 		return false;
 	
 	var $divAccessories = $('#divAccessories');
 	var $inputAccessories = $('#inputAccessories');
 	var $nameAccessories = $('#nameAccessories');
-	var valuesToAdd = valueToAdd.split('-');
-	var productId = valuesToAdd[0];
-	var productName = valuesToAdd[1];
 	
+	pos = valueToAdd.indexOf('-');
+	var productId = valueToAdd.slice(0, pos);
+	var productName = valueToAdd.slice(pos + 1);
+
 	/* delete product from select + add product line to the div, input_name, input_ids elements */
-	$('#selectAccessories option[value='+valueToAdd+']').remove();
+	$('#selectAccessories option[value=' + valueToAdd + ']').remove();
 	$divAccessories.html($divAccessories.html() + productName + ' <span onclick="delAccessory(' + productId + ');" style="cursor: pointer;"><img src="../img/admin/delete.gif" /></span><br />');
 	$nameAccessories.val($nameAccessories.val() + productName + '¤');
 	$inputAccessories.val($inputAccessories.val() + productId + '-');
 }
+
 
 function delAccessory(id)
 {
 	var div = getE('divAccessories');
 	var input = getE('inputAccessories');
 	var name = getE('nameAccessories');
-console.log('---');
- console.log(input);
- console.log('___');
-  console.log(name);
 
-	var reg = new RegExp('-', 'g');
-	var inputCut = input.value.split(reg);
-	var reg2 = new RegExp('¤', 'g');
-	var nameCut = name.value.split(reg2);
-	
+	// Cut hidden fields in array
+	var inputCut = input.value.split('-');
+	var nameCut = name.value.split('¤');
+
+	if (inputCut.lenght != nameCut.lenght)
+		return alert('Bad size');
+
+	// Reset all hidden fields
 	input.value = '';
 	name.value = '';
 	div.innerHTML = '';
+	for (i in inputCut)
+	{
+		// If empty, error, next
+		if (!inputCut[i] || !nameCut[i])
+			continue ;
 
-	for (var i = 0; i < inputCut.length; ++i)
-		if (inputCut[i] && inputCut[i] != id)
+		// Add to hidden fields no selected products OR add to select field selected product
+		if (inputCut[i] != id)
 		{
 			input.value += inputCut[i] + '-';
 			name.value += nameCut[i] + '¤';
 			div.innerHTML += nameCut[i] + ' <span onclick="delAccessory(' + inputCut[i] + ');" style="cursor: pointer;"><img src="../img/admin/delete.gif" /></span><br />';
 		}
+		else
+			$('#selectAccessories').append('<option selected="selected" value="' + inputCut[i] + '-' + nameCut[i] + '">' + inputCut[i] + ' - ' + nameCut[i] + '</option>');
+	}
 }
 
 function dontChange(srcText)
@@ -222,21 +234,8 @@ function queryType()
 	var search_type = getE('bo_search_type').value;
 	var bo_query = getE('bo_query');
 
-	if (search_type == 1)
-	{
-		if (!dontChange(bo_query.value))
-			bo_query.value = search_texts[0];
-	}
-	else if (search_type == 2)
-	{
-		if (!dontChange(bo_query.value))
-			bo_query.value = search_texts[1];
-	}
-	else if (search_type == 3)
-	{
-		if (!dontChange(bo_query.value))
-			bo_query.value = search_texts[2];
-	}
+	if (!dontChange(bo_query.value))
+		bo_query.value = search_texts[search_type - 1];
 }
 
 function formSubmit(e, button)
@@ -249,8 +248,7 @@ function formSubmit(e, button)
 		getE(button).focus();
 		getE(button).click();
 	}
-}
-
+} 
 function	noComma(elem)
 {
  	getE(elem).value = getE(elem).value.replace(new RegExp(',', 'g'), '.');
@@ -289,23 +287,51 @@ function prepareInputsForHints() {
 	var found;
 
 	// For each input
-	for (var i=0; i<inputs.length; i++) {
+	for (var i=0; i<inputs.length; i++)
+	{
 		// on focus, show the hint
-		inputs[i].onfocus = function () {
+		inputs[i].onfocus = function ()
+		{
 			var id = helpboxParser(this);
 			if (id > -1)
 				this.parentNode.getElementsByTagName('span')[id].style.display = 'inline';
 		}
 		// when the cursor moves away from the field, hide the hint
-		inputs[i].onblur = function () {
+		inputs[i].onblur = function ()
+		{
 		 	var id = helpboxParser(this);
 		 	if (id > -1)
 				this.parentNode.getElementsByTagName('span')[id].style.display = 'none';
 		}
 	}
 }
+
+function prepareBoQuery() {
+	var inputs = document.getElementsByTagName('input');
+	var found;
+
+	// For each input
+	for (var i=0; i<inputs.length; i++)
+	{
+		// on focus, show the hint
+		inputs[i].onfocus = function ()
+		{
+			if($(this).attr('id') == 'bo_query')
+				if(!dontChange($('input#bo_query').val()))
+					$('input#bo_query').val('');
+		}
+		// when the cursor moves away from the field, hide the hint
+		inputs[i].onblur = function ()
+		{
+			if($(this).attr('id') == 'bo_query' && $(this).val().length < 1)
+				$(this).val(search_texts[$('select#bo_search_type').val() - 1]);
+		}
+	}
+}
+
 if (helpboxes)
 	addLoadEvent(prepareInputsForHints);
+addLoadEvent(prepareBoQuery);
 
 function changePic(id_product, id_image)
 {
@@ -582,4 +608,37 @@ function showAttributeColorGroup(name, container)
 		openCloseLayer(container, 'open');
 	else
 		openCloseLayer(container, 'close');
+}
+
+function orderOverwriteMessage(sl, text)
+{
+	var $zone = $('#txt_msg');
+	var sl_value = sl.options[sl.selectedIndex].value;
+	
+	if (sl_value != '0')
+	{
+		if ($zone.val().length > 0 && !confirm(text))
+			return ;
+		$zone.val(sl_value);
+	}
+}
+
+function setCancelQuantity(itself, id_order_detail, quantity)
+{
+	$('#cancelQuantity_' + id_order_detail).val($(itself).attr('checked') ? quantity : '');
+}
+
+function stockManagementActivationAuthorization()
+{
+	if (getE('PS_STOCK_MANAGEMENT_on').checked)
+	{
+		getE('PS_ORDER_OUT_OF_STOCK_on').readOnly = false;
+		getE('PS_ORDER_OUT_OF_STOCK_off').readOnly = false;
+	}
+	else
+	{
+		getE('PS_ORDER_OUT_OF_STOCK_on').checked = true;
+		getE('PS_ORDER_OUT_OF_STOCK_on').readOnly = true;
+		getE('PS_ORDER_OUT_OF_STOCK_off').readOnly = true;
+	}
 }

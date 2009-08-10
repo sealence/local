@@ -12,7 +12,6 @@ class StatsProduct extends ModuleGraph
         $this->name = 'statsproduct';
         $this->tab = 'Stats';
         $this->version = 1.0;
-		$this->page = basename(__FILE__, '.php');
 
         parent::__construct();
 		
@@ -27,29 +26,20 @@ class StatsProduct extends ModuleGraph
 	
 	public function getTotalBought($id_product)
 	{
-		$dateLike = ModuleGraph::getDateLike();
+		$dateBetween = ModuleGraph::getDateBetween();
 		$result = Db::getInstance()->getRow('
 		SELECT SUM(od.`product_quantity`) AS total
 		FROM `'._DB_PREFIX_.'order_detail` od
 		LEFT JOIN `'._DB_PREFIX_.'orders` o ON o.`id_order` = od.`id_order`
 		WHERE od.`product_id` = '.intval($id_product).'
-		AND (
-			SELECT os.`invoice`
-			FROM `'._DB_PREFIX_.'orders` oo
-			LEFT JOIN `'._DB_PREFIX_.'order_history` oh ON oh.`id_order` = oo.`id_order`
-			LEFT JOIN `'._DB_PREFIX_.'order_state` os ON os.`id_order_state` = oh.`id_order_state`
-			WHERE oo.`id_order` = o.`id_order`
-			ORDER BY oh.`date_add` DESC, oh.`id_order_history` DESC
-			LIMIT 1
-		) = 1
-		AND o.`date_add` LIKE \''.pSQL($dateLike).'\'');
+		AND o.valid = 1
+		AND o.`date_add` BETWEEN '.$dateBetween.'');
 		return isset($result['total']) ? $result['total'] : 0;
 	}
 	
 	public function getTotalViewed($id_product)
 	{
-		$dateLike = ModuleGraph::getDateLike();
-		
+		$dateBetween = ModuleGraph::getDateBetween();
 		$result = Db::getInstance()->getRow('
 		SELECT SUM(pv.`counter`) AS total
 		FROM `'._DB_PREFIX_.'page_viewed` pv
@@ -58,28 +48,38 @@ class StatsProduct extends ModuleGraph
 		LEFT JOIN `'._DB_PREFIX_.'page_type` pt ON pt.`id_page_type` = p.`id_page_type`
 		WHERE pt.`name` = \'product.php\'
 		AND p.`id_object` = '.intval($id_product).'
-		AND dr.`time_start` LIKE \''.pSQL($dateLike).'\'
-		AND dr.`time_end` LIKE \''.pSQL($dateLike).'\'');
+		AND dr.`time_start` BETWEEN '.$dateBetween.'
+		AND dr.`time_end` BETWEEN '.$dateBetween.'');
 		return isset($result['total']) ? $result['total'] : 0;
 	}
 	
-	private function getProducts()
+	private function getProducts($id_lang)
 	{
-		global $cookie;
 		return Db::getInstance()->ExecuteS('
-		SELECT p.`id_product`, pl.`name`
+		SELECT p.`id_product`, p.reference, pl.`name`, (p.quantity + IFNULL((SELECT SUM(pa.quantity) FROM '._DB_PREFIX_.'product_attribute pa WHERE pa.id_product = p.id_product GROUP BY pa.id_product), 0)) as quantity
 		FROM `'._DB_PREFIX_.'product` p
 		LEFT JOIN `'._DB_PREFIX_.'product_lang` pl ON p.`id_product` = pl.`id_product`
 		'.(Tools::getValue('id_category') ? 'LEFT JOIN `'._DB_PREFIX_.'category_product` cp ON p.`id_product` = cp.`id_product`' : '').'
-		WHERE pl.`id_lang` = '.intval($cookie->id_lang).'
+		WHERE pl.`id_lang` = '.intval($id_lang).'
 		'.(Tools::getValue('id_category') ? 'AND cp.id_category = '.intval(Tools::getValue('id_category')) : '').'
 		ORDER BY pl.`name`');
+	}
+	
+	private function getSales($id_product, $id_lang)
+	{
+		return Db::getInstance()->ExecuteS('
+		SELECT o.date_add, o.id_order, od.product_quantity, (od.product_price * od.product_quantity) as total, od.tax_name, od.product_name
+		FROM `'._DB_PREFIX_.'orders` o
+		LEFT JOIN `'._DB_PREFIX_.'order_detail` od ON o.id_order = od.id_order
+		WHERE o.date_add BETWEEN '.$this->getDate().' AND o.valid = 1
+		AND od.product_id = '.intval($id_product));
 	}
 	
 	public function hookAdminStatsModules($params)
 	{
 		global $cookie, $currentIndex;
 		$id_category = intval(Tools::getValue('id_category'));
+		$currency = new Currency(Configuration::get('PS_CURRENCY_DEFAULT'));
 		
 		$this->_html = '<fieldset class="width3"><legend><img src="../modules/'.$this->name.'/logo.gif" /> '.$this->displayName.'</legend>';
 		if ($id_product = intval(Tools::getValue('id_product')))
@@ -93,8 +93,37 @@ class StatsProduct extends ModuleGraph
 			<center>'.ModuleGraph::engine(array('type' => 'line', 'option' => '1-'.$id_product)).'</center>
 			<p>'.$this->l('Total viewed:').' '.$totalViewed.'</p>
 			<center>'.ModuleGraph::engine(array('type' => 'line', 'option' => '2-'.$id_product)).'</center>';
-			if ($product->hasAttributes() AND $totalBought)
+			if ($hasAttribute = $product->hasAttributes() AND $totalBought)
 				$this->_html .= '<h3 class="space">'.$this->l('Attribute sales distribution').'</h3><center>'.ModuleGraph::engine(array('type' => 'pie', 'option' => '3-'.$id_product)).'</center>';
+			if ($totalBought)
+			{
+				$sales = $this->getSales($id_product, $cookie->id_lang);
+				$this->_html .= '<br class="clear" />
+				<h3>'.$this->l('Sales').'</h3>
+				<div style="overflow-y: scroll; height: 600px;">
+				<table class="table" border="0" cellspacing="0" cellspacing="0">
+				<thead>
+					<tr>
+						<th>'.$this->l('Date').'</th>
+						<th>'.$this->l('Order').'</th>
+						'.($hasAttribute ? '<th>'.$this->l('Attribute').'</th>' : '').'
+						<th>'.$this->l('Qty').'</th>
+						<th>'.$this->l('Price').'</th>
+						<th>'.$this->l('Tax').'</th>
+					</tr>
+				</thead><tbody>';
+				foreach ($sales as $sale)
+					$this->_html .= '
+					<tr>
+						<td>'.Tools::displayDate($sale['date_add'], intval($cookie->id_lang), false).'</td>
+						<td>'.intval($sale['id_order']).'</td>
+						'.($hasAttribute ? '<td>'.$sale['product_name'].'</td>' : '').'
+						<td>'.intval($sale['product_quantity']).'</td>
+						<td>'.Tools::displayprice($sale['total'], $currency).'</td>
+						<td>'.$sale['tax_name'].'</td>
+					</tr>';
+				$this->_html .= '</tbody></table></div>';
+			}
 		}
 		else
 		{
@@ -115,20 +144,39 @@ class StatsProduct extends ModuleGraph
 			'.$this->l('Click on a product to access its statistics.').'
 			<div class="clear space"></div>
 			<h2>'.$this->l('Products available').'</h2>
-			<ul>';
-			foreach ($this->getProducts() AS $product)
-				$this->_html .= '<li><a href="'.$currentIndex.'&token='.Tools::getValue('token').'&module='.$this->name.'&id_product='.$product['id_product'].'">'.$product['name'].'</a></li>';
-			$this->_html .= '</ul>';
+			<div style="overflow-y: scroll; height: 600px;">
+			<table class="table" border="0" cellspacing="0" cellspacing="0">
+			<thead>
+				<tr>
+					<th>'.$this->l('Ref.').'</th>
+					<th>'.$this->l('Name').'</th>
+					<th>'.$this->l('Stock').'</th>
+				</tr>
+			</thead><tbody>';
+			foreach ($this->getProducts($cookie->id_lang) AS $product)
+				$this->_html .= '<tr><td>'.$product['reference'].'</td><td><a href="'.$currentIndex.'&token='.Tools::getValue('token').'&module='.$this->name.'&id_product='.$product['id_product'].'">'.$product['name'].'</a></td><td>'.$product['quantity'].'</td></tr>';
+			$this->_html .= '</tbody></table></div>';
 		}
 		
-		$this->_html .= '</fieldset>';
+		$this->_html .= '</fieldset><br />
+		<fieldset class="width3"><legend><img src="../img/admin/comment.gif" /> '.$this->l('Guide').'</legend>
+		<h2>'.$this->l('Number of purchases compared to number of viewings').'</h2>
+			<p>
+				'.$this->l('After choosing a category and selecting a product available in this category, some graphs appear. Then, you can analyze them.').'
+				<ul>
+					<li class="bullet">'.$this->l('If you notice that a product is successful, very purchased, but also little viewed: you should put it more prominently on your webshop front-office.').'</li>
+					<li class="bullet">'.$this->l('On the other hand, if a product knows a lot of viewings but is not really purchased: we advise you to check or modify this product\'s information, description and photography again.').'
+					</li>
+				</ul>
+			</p>
+		</fieldset>';
 		return $this->_html;
 	}
 	
-	public function setOption($option)
+	public function setOption($option, $layers = 1)
 	{
 		list($this->_option, $this->_id_product) = explode('-', $option);
-		$dateLike = ModuleGraph::getDateLike();
+		$dateBetween = $this->getDate();
 		switch ($this->_option)
 		{
 			case 1:
@@ -137,16 +185,8 @@ class StatsProduct extends ModuleGraph
 					FROM `'._DB_PREFIX_.'order_detail` od
 					LEFT JOIN `'._DB_PREFIX_.'orders` o ON o.`id_order` = od.`id_order`
 					WHERE od.`product_id` = '.intval($this->_id_product).'
-					AND (
-						SELECT os.`invoice`
-						FROM `'._DB_PREFIX_.'orders` oo
-						LEFT JOIN `'._DB_PREFIX_.'order_history` oh ON oh.`id_order` = oo.`id_order`
-						LEFT JOIN `'._DB_PREFIX_.'order_state` os ON os.`id_order_state` = oh.`id_order_state`
-						WHERE oo.`id_order` = o.`id_order`
-						ORDER BY oh.`date_add` DESC, oh.`id_order_history` DESC
-						LIMIT 1
-					) = 1
-					AND o.`date_add` LIKE \''.pSQL($dateLike).'\'
+					AND o.valid = 1
+					AND o.`date_add` BETWEEN '.$dateBetween.'
 					GROUP BY o.`date_add`';
 				$this->_titles['main'] = $this->l('Number of purchases');
 				break;
@@ -159,8 +199,8 @@ class StatsProduct extends ModuleGraph
 					LEFT JOIN `'._DB_PREFIX_.'page_type` pt ON pt.`id_page_type` = p.`id_page_type`
 					WHERE pt.`name` = \'product.php\'
 					AND p.`id_object` = '.intval($this->_id_product).'
-					AND dr.`time_start` LIKE \''.pSQL($dateLike).'\'
-					AND dr.`time_end` LIKE \''.pSQL($dateLike).'\'
+					AND dr.`time_start` BETWEEN '.$dateBetween.'
+					AND dr.`time_end` BETWEEN '.$dateBetween.'
 					GROUP BY dr.`time_start`';
 				$this->_titles['main'] = $this->l('Number of visits');
 				break;
@@ -170,34 +210,25 @@ class StatsProduct extends ModuleGraph
 					FROM `'._DB_PREFIX_.'orders` o
 					LEFT JOIN `'._DB_PREFIX_.'order_detail` od ON o.`id_order` = od.`id_order`
 					WHERE od.`product_id` = '.intval($this->_id_product).'
-					AND (
-						SELECT os.`invoice`
-						FROM `'._DB_PREFIX_.'orders` oo
-						LEFT JOIN `'._DB_PREFIX_.'order_history` oh ON oh.`id_order` = oo.`id_order`
-						LEFT JOIN `'._DB_PREFIX_.'order_state` os ON os.`id_order_state` = oh.`id_order_state`
-						WHERE oo.`id_order` = o.`id_order`
-						ORDER BY oh.`date_add` DESC, oh.`id_order_history` DESC
-						LIMIT 1
-					) = 1
-					AND o.`date_add` LIKE \''.pSQL($dateLike).'\'
+					AND o.valid = 1
+					AND o.`date_add` BETWEEN '.$dateBetween.'
 					GROUP BY od.`product_attribute_id`';
 				$this->_titles['main'] = $this->l('Attributes');
 				break;
 		}
 	}
 	
-	protected function getData()
+	protected function getData($layers)
 	{
 		if ($this->_option != 3)
-			$this->setDateGraph(true);
+			$this->setDateGraph($layers, true);
 		else
 		{
-			global $cookie;
-			$product = new Product($this->_id_product, false, intval($cookie->id_lang));
+			$product = new Product($this->_id_product, false, intval($this->getLang()));
 			
 			$combArray = array();
 			$assocNames = array();
-			$combinaisons = $product->getAttributeCombinaisons(intval($cookie->id_lang));
+			$combinaisons = $product->getAttributeCombinaisons(intval($this->getLang()));
 			foreach ($combinaisons AS $k => $combinaison)
 				$combArray[$combinaison['id_product_attribute']][] = array('group' => $combinaison['group_name'], 'attr' => $combinaison['attribute_name']);
 			foreach ($combArray AS $id_product_attribute => $product_attribute)
@@ -218,21 +249,21 @@ class StatsProduct extends ModuleGraph
 		}
 	}
 	
-	protected function setYearValues()
+	protected function setYearValues($layers)
 	{
 		$result = Db::getInstance()->ExecuteS($this->_query);
 		foreach ($result AS $row)
-		    $this->_values[intval(substr($row['date_add'], 5, 2)) - 1] += $row['total'];
+		    $this->_values[intval(substr($row['date_add'], 5, 2))] += $row['total'];
 	}
 	
-	protected function setMonthValues()
+	protected function setMonthValues($layers)
 	{
 		$result = Db::getInstance()->ExecuteS($this->_query);
 		foreach ($result AS $row)
-		    $this->_values[intval(substr($row['date_add'], 8, 2)) - 1] += $row['total'];
+		    $this->_values[intval(substr($row['date_add'], 8, 2))] += $row['total'];
 	}
 
-	protected function setDayValues()
+	protected function setDayValues($layers)
 	{
 		$result = Db::getInstance()->ExecuteS($this->_query);
 		foreach ($result AS $row)

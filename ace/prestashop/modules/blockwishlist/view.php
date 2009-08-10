@@ -1,8 +1,11 @@
 <?php
 
-require(dirname(__FILE__).'/../../config/config.inc.php');
-require(dirname(__FILE__).'/../../header.php');
-require(dirname(__FILE__).'/WishList.php');
+/* SSL Management */
+$useSSL = true;
+
+require_once(dirname(__FILE__).'/../../config/config.inc.php');
+require_once(dirname(__FILE__).'/../../header.php');
+require_once(dirname(__FILE__).'/WishList.php');
 
 $token = Tools::getValue('token');
 if (empty($token) === false)
@@ -21,13 +24,8 @@ if (empty($token) === false)
 		{
 			if ($products[$i]['id_product_attribute'] != 0)
 			{
-				$attrgrps = $obj->getAttributesGroups(intval($cookie->id_lang));
-				foreach ($attrgrps AS $attrgrp)
-					if ($attrgrp['id_product_attribute'] == intval($products[$i]['id_product_attribute']))
-					{
-						$products[$i]['cover'] = $obj->id.'-'.$attrgrp['id_image'];
-						break;
-					}
+				$combination_imgs = $obj->getCombinationImages(intval($cookie->id_lang));
+				$products[$i]['cover'] = $obj->id.'-'.$combination_imgs[$products[$i]['id_product_attribute']][0]['id_image'];
 			}
 			else
 			{

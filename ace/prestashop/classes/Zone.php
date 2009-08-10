@@ -8,7 +8,7 @@
   * @author PrestaShop <support@prestashop.com>
   * @copyright PrestaShop
   * @license http://www.opensource.org/licenses/osl-3.0.php Open-source licence 3.0
-  * @version 1.1
+  * @version 1.2
   *
   */
 
@@ -19,7 +19,7 @@ class		Zone extends ObjectModel
 	
 	/** @var boolean Zone statuts */
 	public 		$active = true;
-	public 		$eu_zone = false;
+	public 		$eu_zone = false; /* Obsolete; to remove */
 	
  	protected 	$fieldsRequired = array('name');
  	protected 	$fieldsSize = array('name' => 64);
