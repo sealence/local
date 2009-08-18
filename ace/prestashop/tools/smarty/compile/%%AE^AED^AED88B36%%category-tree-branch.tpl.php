@@ -1,4 +1,4 @@
-<?php /* Smarty version 2.6.20, created on 2009-07-15 13:16:22
+<?php /* Smarty version 2.6.20, created on 2009-08-18 14:06:18
          compiled from /home/sealence/local/ace/prestashop/modules/blockcategories/category-tree-branch.tpl */ ?>
 <?php require_once(SMARTY_CORE_DIR . 'core.load_plugins.php');
 smarty_core_load_plugins(array('plugins' => array(array('modifier', 'escape', '/home/sealence/local/ace/prestashop/modules/blockcategories/category-tree-branch.tpl', 2, false),array('modifier', 'count', '/home/sealence/local/ace/prestashop/modules/blockcategories/category-tree-branch.tpl', 3, false),)), $this); ?>

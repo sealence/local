@@ -1,15 +1,11 @@
-<?php /* Smarty version 2.6.20, created on 2009-07-15 13:16:25
+<?php /* Smarty version 2.6.20, created on 2009-08-18 14:06:11
          compiled from /home/sealence/local/ace/prestashop/themes/prestashop/header.tpl */ ?>
 <?php require_once(SMARTY_CORE_DIR . 'core.load_plugins.php');
-smarty_core_load_plugins(array('plugins' => array(array('modifier', 'escape', '/home/sealence/local/ace/prestashop/themes/prestashop/header.tpl', 4, false),)), $this); ?>
+smarty_core_load_plugins(array('plugins' => array(array('modifier', 'escape', '/home/sealence/local/ace/prestashop/themes/prestashop/header.tpl', 4, false),array('function', 'l', '/home/sealence/local/ace/prestashop/themes/prestashop/header.tpl', 41, false),)), $this); ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="<?php echo $this->_tpl_vars['lang_iso']; ?>
 ">
 	<head>
-		<base href="<?php echo $this->_tpl_vars['protocol']; ?>
-<?php echo ((is_array($_tmp=$_SERVER['HTTP_HOST'])) ? $this->_run_mod_handler('escape', true, $_tmp, 'htmlall', 'UTF-8') : smarty_modifier_escape($_tmp, 'htmlall', 'UTF-8')); ?>
-<?php echo $this->_tpl_vars['base_dir']; ?>
-" />
 		<title><?php echo ((is_array($_tmp=$this->_tpl_vars['meta_title'])) ? $this->_run_mod_handler('escape', true, $_tmp, 'htmlall', 'UTF-8') : smarty_modifier_escape($_tmp, 'htmlall', 'UTF-8')); ?>
 </title>
 <?php if (isset ( $this->_tpl_vars['meta_description'] ) && $this->_tpl_vars['meta_description']): ?>
@@ -36,10 +32,10 @@ favicon.ico" />
 " />
 	<?php endforeach; endif; unset($_from); ?>
 <?php endif; ?>
-		<script type="text/javascript" src="<?php echo $this->_tpl_vars['base_dir']; ?>
+		<script type="text/javascript" src="<?php echo $this->_tpl_vars['content_dir']; ?>
 js/tools.js"></script>
 		<script type="text/javascript">
-			var baseDir = '<?php echo $this->_tpl_vars['base_dir']; ?>
+			var baseDir = '<?php echo $this->_tpl_vars['content_dir']; ?>
 ';
 			var static_token = '<?php echo $this->_tpl_vars['static_token']; ?>
 ';
@@ -48,10 +44,12 @@ js/tools.js"></script>
 			var priceDisplayPrecision = <?php echo $this->_tpl_vars['priceDisplayPrecision']*$this->_tpl_vars['currency']->decimals; ?>
 ;
 		</script>
-		<script type="text/javascript" src="<?php echo $this->_tpl_vars['base_dir']; ?>
+		<script type="text/javascript" src="<?php echo $this->_tpl_vars['content_dir']; ?>
 js/jquery/jquery-1.2.6.pack.js"></script>
-		<script type="text/javascript" src="<?php echo $this->_tpl_vars['base_dir']; ?>
+		<script type="text/javascript" src="<?php echo $this->_tpl_vars['content_dir']; ?>
 js/jquery/jquery.easing.1.3.js"></script>
+		<script type="text/javascript" src="<?php echo $this->_tpl_vars['content_dir']; ?>
+js/jquery/jquery.hotkeys-0.7.8-packed.js"></script>
 <?php if (isset ( $this->_tpl_vars['js_files'] )): ?>
 	<?php $_from = $this->_tpl_vars['js_files']; if (!is_array($_from) && !is_object($_from)) { settype($_from, 'array'); }if (count($_from)):
     foreach ($_from as $this->_tpl_vars['js_uri']):
@@ -67,6 +65,8 @@ js/jquery/jquery.easing.1.3.js"></script>
 	<body <?php if ($this->_tpl_vars['page_name']): ?>id="<?php echo ((is_array($_tmp=$this->_tpl_vars['page_name'])) ? $this->_run_mod_handler('escape', true, $_tmp, 'htmlall', 'UTF-8') : smarty_modifier_escape($_tmp, 'htmlall', 'UTF-8')); ?>
 "<?php endif; ?>>
 	<?php if (! $this->_tpl_vars['content_only']): ?>
+		<noscript><ul><li><?php echo smartyTranslate(array('s' => 'This shop requires JavaScript to run correctly. Please activate JavaScript in your browser.'), $this);?>
+</li></ul></noscript>
 		<div id="page">
 
 			<!-- Header -->
@@ -90,4 +90,4 @@ logo.jpg" alt="<?php echo ((is_array($_tmp=$this->_tpl_vars['shop_name'])) ? $th
 
 			<!-- Center -->
 			<div id="center_column">
-	<?php endif; ?>
+	<?php endif; ?>

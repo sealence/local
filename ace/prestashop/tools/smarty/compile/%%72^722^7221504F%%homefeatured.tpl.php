@@ -1,7 +1,7 @@
-<?php /* Smarty version 2.6.20, created on 2009-07-15 13:16:27
+<?php /* Smarty version 2.6.20, created on 2009-08-18 14:06:14
          compiled from /home/sealence/local/ace/prestashop/modules/homefeatured/homefeatured.tpl */ ?>
 <?php require_once(SMARTY_CORE_DIR . 'core.load_plugins.php');
-smarty_core_load_plugins(array('plugins' => array(array('function', 'l', '/home/sealence/local/ace/prestashop/modules/homefeatured/homefeatured.tpl', 3, false),array('function', 'displayWtPrice', '/home/sealence/local/ace/prestashop/modules/homefeatured/homefeatured.tpl', 19, false),array('modifier', 'count', '/home/sealence/local/ace/prestashop/modules/homefeatured/homefeatured.tpl', 8, false),array('modifier', 'ceil', '/home/sealence/local/ace/prestashop/modules/homefeatured/homefeatured.tpl', 9, false),array('modifier', 'escape', '/home/sealence/local/ace/prestashop/modules/homefeatured/homefeatured.tpl', 15, false),array('modifier', 'truncate', '/home/sealence/local/ace/prestashop/modules/homefeatured/homefeatured.tpl', 15, false),array('modifier', 'strip_tags', '/home/sealence/local/ace/prestashop/modules/homefeatured/homefeatured.tpl', 16, false),)), $this); ?>
+smarty_core_load_plugins(array('plugins' => array(array('function', 'l', '/home/sealence/local/ace/prestashop/modules/homefeatured/homefeatured.tpl', 3, false),array('function', 'convertPrice', '/home/sealence/local/ace/prestashop/modules/homefeatured/homefeatured.tpl', 18, false),array('modifier', 'count', '/home/sealence/local/ace/prestashop/modules/homefeatured/homefeatured.tpl', 8, false),array('modifier', 'ceil', '/home/sealence/local/ace/prestashop/modules/homefeatured/homefeatured.tpl', 9, false),array('modifier', 'truncate', '/home/sealence/local/ace/prestashop/modules/homefeatured/homefeatured.tpl', 14, false),array('modifier', 'escape', '/home/sealence/local/ace/prestashop/modules/homefeatured/homefeatured.tpl', 14, false),array('modifier', 'strip_tags', '/home/sealence/local/ace/prestashop/modules/homefeatured/homefeatured.tpl', 15, false),)), $this); ?>
 <!-- MODULE Home Featured Products -->
 <div id="featured-products_block_center" class="block products_block">
 	<h4><?php echo smartyTranslate(array('s' => 'featured products','mod' => 'homefeatured'), $this);?>
@@ -20,26 +20,30 @@ if ($this->_foreach['homeFeaturedProducts']['total'] > 0):
     foreach ($_from as $this->_tpl_vars['product']):
         $this->_foreach['homeFeaturedProducts']['iteration']++;
 ?>
-				<?php $this->assign('productLink', $this->_tpl_vars['link']->getProductLink($this->_tpl_vars['product']['id_product'],$this->_tpl_vars['product']['link_rewrite'],$this->_tpl_vars['product']['category'])); ?>
 				<li class="ajax_block_product <?php if (($this->_foreach['homeFeaturedProducts']['iteration'] <= 1)): ?>first_item<?php elseif (($this->_foreach['homeFeaturedProducts']['iteration'] == $this->_foreach['homeFeaturedProducts']['total'])): ?>last_item<?php else: ?>item<?php endif; ?> <?php if ($this->_foreach['homeFeaturedProducts']['iteration']%$this->_tpl_vars['nbItemsPerLine'] == 0): ?>last_item_of_line<?php elseif ($this->_foreach['homeFeaturedProducts']['iteration']%$this->_tpl_vars['nbItemsPerLine'] == 1): ?>first_item_of_line<?php endif; ?> <?php if ($this->_foreach['homeFeaturedProducts']['iteration'] > ( $this->_foreach['homeFeaturedProducts']['total'] - ( $this->_foreach['homeFeaturedProducts']['total'] % $this->_tpl_vars['nbItemsPerLine'] ) )): ?>last_line<?php endif; ?>">
-					<h5><a href="<?php echo $this->_tpl_vars['productLink']; ?>
-" title="<?php echo ((is_array($_tmp=((is_array($_tmp=$this->_tpl_vars['product']['name'])) ? $this->_run_mod_handler('escape', true, $_tmp, 'htmlall', 'UTF-8') : smarty_modifier_escape($_tmp, 'htmlall', 'UTF-8')))) ? $this->_run_mod_handler('truncate', true, $_tmp, 35) : smarty_modifier_truncate($_tmp, 35)); ?>
-"><?php echo ((is_array($_tmp=((is_array($_tmp=$this->_tpl_vars['product']['name'])) ? $this->_run_mod_handler('escape', true, $_tmp, 'htmlall', 'UTF-8') : smarty_modifier_escape($_tmp, 'htmlall', 'UTF-8')))) ? $this->_run_mod_handler('truncate', true, $_tmp, 35) : smarty_modifier_truncate($_tmp, 35)); ?>
+					<h5><a href="<?php echo $this->_tpl_vars['product']['link']; ?>
+" title="<?php echo ((is_array($_tmp=((is_array($_tmp=$this->_tpl_vars['product']['name'])) ? $this->_run_mod_handler('truncate', true, $_tmp, 32, '...') : smarty_modifier_truncate($_tmp, 32, '...')))) ? $this->_run_mod_handler('escape', true, $_tmp, 'htmlall', 'UTF-8') : smarty_modifier_escape($_tmp, 'htmlall', 'UTF-8')); ?>
+"><?php echo ((is_array($_tmp=((is_array($_tmp=$this->_tpl_vars['product']['name'])) ? $this->_run_mod_handler('truncate', true, $_tmp, 27, '...') : smarty_modifier_truncate($_tmp, 27, '...')))) ? $this->_run_mod_handler('escape', true, $_tmp, 'htmlall', 'UTF-8') : smarty_modifier_escape($_tmp, 'htmlall', 'UTF-8')); ?>
 </a></h5>
-					<p class="product_desc"><a href="<?php echo $this->_tpl_vars['productLink']; ?>
+					<p class="product_desc"><a href="<?php echo $this->_tpl_vars['product']['link']; ?>
 " title="<?php echo smartyTranslate(array('s' => 'More','mod' => 'homefeatured'), $this);?>
-"><?php echo ((is_array($_tmp=((is_array($_tmp=$this->_tpl_vars['product']['description_short'])) ? $this->_run_mod_handler('strip_tags', true, $_tmp, 'htmlall', 'UTF-8') : smarty_modifier_strip_tags($_tmp, 'htmlall', 'UTF-8')))) ? $this->_run_mod_handler('truncate', true, $_tmp, 130) : smarty_modifier_truncate($_tmp, 130)); ?>
+"><?php echo ((is_array($_tmp=((is_array($_tmp=$this->_tpl_vars['product']['description_short'])) ? $this->_run_mod_handler('strip_tags', true, $_tmp) : smarty_modifier_strip_tags($_tmp)))) ? $this->_run_mod_handler('truncate', true, $_tmp, 130, '...') : smarty_modifier_truncate($_tmp, 130, '...')); ?>
 </a></p>
-					<a href="<?php echo $this->_tpl_vars['productLink']; ?>
+					<a href="<?php echo $this->_tpl_vars['product']['link']; ?>
 " title="<?php echo ((is_array($_tmp=$this->_tpl_vars['product']['legend'])) ? $this->_run_mod_handler('escape', true, $_tmp, 'htmlall', 'UTF-8') : smarty_modifier_escape($_tmp, 'htmlall', 'UTF-8')); ?>
-" class="product_image"><img src="<?php echo $this->_tpl_vars['img_prod_dir']; ?>
-<?php echo $this->_tpl_vars['product']['id_image']; ?>
--home.jpg" alt="<?php echo ((is_array($_tmp=$this->_tpl_vars['product']['legend'])) ? $this->_run_mod_handler('escape', true, $_tmp, 'htmlall', 'UTF-8') : smarty_modifier_escape($_tmp, 'htmlall', 'UTF-8')); ?>
-" height="129" width="129" /></a>
-					<p>
-						<span class="price"><?php echo Product::displayWtPrice(array('p' => $this->_tpl_vars['product']['price']), $this);?>
-</span>
-						<a class="button" href="<?php echo $this->_tpl_vars['productLink']; ?>
+" class="product_image"><img src="<?php echo $this->_tpl_vars['link']->getImageLink($this->_tpl_vars['product']['link_rewrite'],$this->_tpl_vars['product']['id_image'],'home'); ?>
+" height="<?php echo $this->_tpl_vars['homeSize']['height']; ?>
+" width="<?php echo $this->_tpl_vars['homeSize']['width']; ?>
+" alt="<?php echo ((is_array($_tmp=$this->_tpl_vars['product']['legend'])) ? $this->_run_mod_handler('escape', true, $_tmp, 'htmlall', 'UTF-8') : smarty_modifier_escape($_tmp, 'htmlall', 'UTF-8')); ?>
+" /></a>
+					<div>
+						<?php if (! $this->_tpl_vars['priceDisplay'] || $this->_tpl_vars['priceDisplay'] == 2): ?><p class="price_container"><span class="price"><?php echo Product::convertPrice(array('price' => $this->_tpl_vars['product']['price']), $this);?>
+</span><?php if ($this->_tpl_vars['priceDisplay'] == 2): ?> <?php echo smartyTranslate(array('s' => 'Tax inc.','mod' => 'homefeatured'), $this);?>
+<?php endif; ?></p><?php endif; ?>
+						<?php if ($this->_tpl_vars['priceDisplay']): ?><p class="price_container"><span class="price"><?php echo Product::convertPrice(array('price' => $this->_tpl_vars['product']['price_tax_exc']), $this);?>
+</span><?php if ($this->_tpl_vars['priceDisplay'] == 2): ?> <?php echo smartyTranslate(array('s' => 'Tax exc.','mod' => 'homefeatured'), $this);?>
+<?php endif; ?></p><?php endif; ?>
+						<a class="button" href="<?php echo $this->_tpl_vars['product']['link']; ?>
 " title="<?php echo smartyTranslate(array('s' => 'View','mod' => 'homefeatured'), $this);?>
 "><?php echo smartyTranslate(array('s' => 'View','mod' => 'homefeatured'), $this);?>
 </a>
@@ -55,7 +59,7 @@ cart.php?qty=1&amp;id_product=<?php echo $this->_tpl_vars['product']['id_product
 						<span class="exclusive"><?php echo smartyTranslate(array('s' => 'Add to cart','mod' => 'homefeatured'), $this);?>
 </span>
 						<?php endif; ?>
-					</p>
+					</div>
 				</li>
 			<?php endforeach; endif; unset($_from); ?>
 			</ul>

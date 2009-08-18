@@ -1,4 +1,4 @@
-<?php /* Smarty version 2.6.20, created on 2009-07-15 13:16:31
+<?php /* Smarty version 2.6.20, created on 2009-08-18 14:06:19
          compiled from /home/sealence/local/ace/prestashop/modules/blockvariouslinks/blockvariouslinks.tpl */ ?>
 <?php require_once(SMARTY_CORE_DIR . 'core.load_plugins.php');
 smarty_core_load_plugins(array('plugins' => array(array('function', 'l', '/home/sealence/local/ace/prestashop/modules/blockvariouslinks/blockvariouslinks.tpl', 3, false),array('modifier', 'addslashes', '/home/sealence/local/ace/prestashop/modules/blockvariouslinks/blockvariouslinks.tpl', 8, false),array('modifier', 'escape', '/home/sealence/local/ace/prestashop/modules/blockvariouslinks/blockvariouslinks.tpl', 8, false),)), $this); ?>

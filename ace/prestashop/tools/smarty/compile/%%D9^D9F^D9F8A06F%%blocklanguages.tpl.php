@@ -1,4 +1,4 @@
-<?php /* Smarty version 2.6.20, created on 2009-07-16 16:51:01
+<?php /* Smarty version 2.6.20, created on 2009-08-18 14:06:09
          compiled from /home/sealence/local/ace/prestashop/modules/blocklanguages/blocklanguages.tpl */ ?>
 <!-- Block languages module -->
 <div id="languages_block_top">
