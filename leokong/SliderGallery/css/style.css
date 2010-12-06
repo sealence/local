@@ -224,13 +224,14 @@ ul.fp_galleryList li:hover{
 	height:12px;
 	background: #9b9b9b;
 	margin-left:-7px;
+  overflow: hidden;
 }
 .ui-state-default {
 	background-image:none;
 }
 .fp_prev_thumb,
 .fp_next_thumb{
-  filter:progid:DXImageTransform.Microsoft.AlphaImageLoader(enabled='true', src='images/nav.png');
+  /*filter:progid:DXImageTransform.Microsoft.AlphaImageLoader(enabled='true', src='images/nav.png');*/
   background:transparent url(../images/nav.png) no-repeat top left;
   position:absolute;
 	top:8px;
