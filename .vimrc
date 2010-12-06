@@ -1,10 +1,3 @@
-
-    set encoding=cp936
-
-    set termencoding=cp936
-
-    set fileencoding=cp936
-
 " An example for a vimrc file.
 "
 " Maintainer:	Bram Moolenaar <Bram@vim.org>
@@ -21,8 +14,8 @@
 "let g:vjde_cfu_java_para=1
 "let g:vjde_show_preview=1 
 
-
 behave mswin
+"source /home/users/sshao/.vim/mswin.vim
 " When started as "evim", evim.vim will already have done these settings.
 if v:progname =~? "evim"
   finish
@@ -207,6 +200,8 @@ map <leader>v :e! ~/.vimrc<cr>
 "When .vimrc is edited, reload it
 "autocmd! bufwritepost vimrc source ~/vim_local/vimrc
 
+"delete to end of the file
+"map <leader>d :.,$ d<cr>
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " => Colors and Fonts
@@ -290,7 +285,7 @@ set backspace=eol,start,indent
 set whichwrap+=<,>,h,l
 
 "Ignore case when searching
-"set ignorecase
+set ignorecase
 set incsearch
 
 "Set magic on
@@ -368,6 +363,8 @@ map <leader>q :Bclose<cr>
 "map <down> <leader>bd
 "Use the arrows to something usefull
 nmap <tab> :bn<cr>
+nmap <C-z> :bn<cr>
+nmap <C-x> :bp<cr>
 "map <right> :bn<cr>
 "map <left> :bp<cr>
 
@@ -550,7 +547,8 @@ set noar
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 "Enable folding, I find it very useful
 set fen
-set fdl=0
+"set fdl=0
+set foldlevelstart=20
 
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -642,6 +640,7 @@ map <leader>s? z=
    " => Tag list (ctags) - not used
    """"""""""""""""""""""""""""""
    let Tlist_Ctags_Cmd = "ctags"
+   "let Tlist_Auto_Highlight_Tag = 0
    "let Tlist_Sort_Type = "name"
    "let Tlist_Show_Menu = 1
    "map <leader>t :Tlist<cr>
@@ -867,7 +866,7 @@ map <silent> <leader><cr> :noh<cr>
 map <leader>n :cn<cr>
 map <leader>p :cp<cr>
 map <leader>c :botright cw 10<cr>
-map <c-u> <c-l><c-j>:q<cr>:botright cw 10<cr>
+"map <c-u> <c-l><c-j>:q<cr>:botright cw 10<cr>
 
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -883,7 +882,7 @@ set pastetoggle=<F3>
 map <F2> :%s/\s*$//g<cr>:noh<cr>''
 
 "Super paste
-inoremap <C-v> <esc>:set paste<cr>mui<C-R>+<esc>mv'uV'v=:set nopaste<cr>
+"inoremap <C-v> <esc>:set paste<cr>mui<C-R>+<esc>mv'uV'v=:set nopaste<cr>
 
 "A function that inserts links & anchors on a TOhtml export.
 " Notice:
@@ -902,7 +901,7 @@ function! SmartTOHtml()
    exe ":bd"
 endfunction
 
-"ssl map F2 to onmi
+"ssl map F2 to omni
 imap <F2> <C-X><C-O>
 imap <F3> <C-N><C-P>
 "map <F4> :NERDTreeClose<cr>
@@ -911,6 +910,7 @@ fun! MyDirTree()
     if exists("t:NERDTreeWinName")
         if bufwinnr(t:NERDTreeWinName) > 0
             :NERDTreeClose
+            wincmd j
         else
             :NERDTree
         endif
