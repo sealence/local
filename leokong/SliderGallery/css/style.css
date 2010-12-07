@@ -9,12 +9,13 @@ html, body {
 body {
 	margin:0;
 	padding:0;
-	background:#000;
+	background: #43413F;
 	text-align:center;
 	color:#fff;
 	font-family:Arial, Helvetica, sans-serif;
 	overflow:hidden;
 }
+/*
 .fp_bgPattern{
 	position:absolute;
 	top:0px;
@@ -33,6 +34,7 @@ img.fp_bgImage{
 	opacity:0.2;
 	filter:progid:DXImageTransform.Microsoft.Alpha(opacity=20);
 }
+*/
 h1{
 	font-weight:normal;
 	margin:40px 0px 10px 0px;
@@ -118,10 +120,6 @@ ul.fp_galleryList li:hover{
 	position:absolute;
 	top:0px;
 	left:0px;
-  /*
-	right:0px;
-	bottom:0px;
-  */
   height:100%;
   width:100%;
 	z-index:10;
@@ -266,3 +264,22 @@ img.fp_preview{
 	opacity:0;
 	filter:progid:DXImageTransform.Microsoft.Alpha(opacity=0);	
 }
+span.reference{
+  font-family:Arial;
+  position:absolute;
+  left:10px;
+  bottom:10px;
+  font-size:13px;
+  width: 100%;
+  padding: 15px;
+	background: url(../images/dark_stitch.gif) repeat-x scroll center bottom;
+}
+span.reference a{
+  color:#fff;
+  margin-right:20px;
+  text-transform:uppercase;
+}
+span.reference a:hover{
+  border-bottom:1px solid #ddd;
+}
+
