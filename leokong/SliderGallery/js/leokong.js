@@ -219,6 +219,7 @@ $(function() {
   $fp_close_overlay.bind('click',function(){
       $(this).hide();
       $fp_overlay.hide();
+      $dock.hide();
   });
 
   //centers an image and opens it if open is true
