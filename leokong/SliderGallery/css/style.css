@@ -287,7 +287,6 @@ span.reference a:hover{
   position:relative;
   top:50%;
   width:100%;
-  display:none;
 }
 /*...centre the dock...*/
 #dock div.jqDockWrap {margin:0 auto;text-align: left;}

@@ -30,8 +30,6 @@ $(function() {
   var $connects = $('#connects');
   //the link of about us
   var $about = $('#about');
-  //the Dock
-  var $dock = $('#dock');
   //current image being viewed
   var current				= 0;
   
@@ -41,13 +39,6 @@ $(function() {
 
   //font replace
 	Cufon.replace('h1,h2,.fp_close,.reference');
-
-  //jqDock
-  $dock.jqDock({
-    align: 'middle'
-   ,size:48
-   ,distance:40
-  });
 
   //User clicks on a city / gallery;
   $fp_galleries.bind('click',function(){
@@ -219,7 +210,7 @@ $(function() {
   $fp_close_overlay.bind('click',function(){
       $(this).hide();
       $fp_overlay.hide();
-      $dock.hide();
+      $fp_overlay.empty();
   });
 
   //centers an image and opens it if open is true
@@ -488,9 +479,20 @@ $(function() {
 
   //Connects
   $connects.click(function(){
-      $fp_overlay.show();
+      $fp_overlay.load('connects.html',function(){
+        //the Dock
+        var $dock = $('#dock');
+        //jqDock
+        $dock.jqDock({
+          align: 'middle'
+         ,size:48
+         ,distance:40
+        });
+        //show
+        $fp_overlay.show();
+      });
+
       $fp_close_overlay.show();
-      $dock.show();
   });
 
 //END jQuery
