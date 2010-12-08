@@ -41,7 +41,7 @@ $(function() {
 	Cufon.replace('h1,h2,.fp_close,.author');
 
   //Sealence
-  $('#sealence').colorbox({width:"80%", height:"80%", iframe:true, href:"http://sealence.x10hosting.com"});
+  $('#sealence').colorbox({width:"80%", height:"80%", iframe:true});
 
   //User clicks on a city / gallery;
   $fp_galleries.bind('click',function(){
