@@ -40,6 +40,9 @@ $(function() {
   //font replace
 	Cufon.replace('h1,h2,.fp_close,.reference,.author');
 
+  //Sealence
+  $('#sealence').colorbox({width:"80%", height:"80%", iframe:true, href:"http://sealence.x10hosting.com"});
+
   //User clicks on a city / gallery;
   $fp_galleries.bind('click',function(){
     $fp_galleries.removeClass('current');
@@ -497,20 +500,7 @@ $(function() {
 
   //About
   $about.click(function(){
-      $fp_overlay.load('connects.html',function(){
-        //the Dock
-        var $dock = $('#dock');
-        //jqDock
-        $dock.jqDock({
-          align: 'middle'
-         ,size:48
-         ,distance:40
-        });
-        //show
-        $fp_overlay.show();
-      });
-
-      $fp_close_overlay.show();
+    $.colorbox({width:"80%", height:"80%", iframe:true, href:"http://sealence.x10hosting.com"});
   });
 
 //END jQuery
