@@ -296,6 +296,13 @@ span.author a{
   font-weight: bold;
   margin-right:20px;
 }
+#about_content{
+  position:relative;
+  top:30%;
+  text-align:left;
+  margin:0 auto;
+  width:400px;
+}
 #dock{
   position:relative;
   top:50%;

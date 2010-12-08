@@ -38,7 +38,7 @@ $(function() {
   var photo_nav			= true;
 
   //font replace
-	Cufon.replace('h1,h2,.fp_close,.reference,.author');
+	Cufon.replace('h1,h2,.fp_close,.author');
 
   //Sealence
   $('#sealence').colorbox({width:"80%", height:"80%", iframe:true, href:"http://sealence.x10hosting.com"});
@@ -500,7 +500,12 @@ $(function() {
 
   //About
   $about.click(function(){
-    $.colorbox({width:"80%", height:"80%", iframe:true, href:"http://sealence.x10hosting.com"});
+//    $.colorbox({width:"80%", height:"80%", iframe:true, href:"about.html"});
+      $fp_overlay.load('about.html',function(){
+        //show
+        $fp_overlay.show();
+      });
+      $fp_close_overlay.show();
   });
 
 //END jQuery
