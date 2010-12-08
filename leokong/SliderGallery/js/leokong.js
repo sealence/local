@@ -38,7 +38,7 @@ $(function() {
   var photo_nav			= true;
 
   //font replace
-	Cufon.replace('h1,h2,.fp_close,.reference');
+	Cufon.replace('h1,h2,.fp_close,.reference,.author');
 
   //User clicks on a city / gallery;
   $fp_galleries.bind('click',function(){
@@ -479,6 +479,24 @@ $(function() {
 
   //Connects
   $connects.click(function(){
+      $fp_overlay.load('connects.html',function(){
+        //the Dock
+        var $dock = $('#dock');
+        //jqDock
+        $dock.jqDock({
+          align: 'middle'
+         ,size:48
+         ,distance:40
+        });
+        //show
+        $fp_overlay.show();
+      });
+
+      $fp_close_overlay.show();
+  });
+
+  //About
+  $about.click(function(){
       $fp_overlay.load('connects.html',function(){
         //the Dock
         var $dock = $('#dock');

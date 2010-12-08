@@ -268,10 +268,10 @@ span.reference{
   font-family:Arial;
   position:absolute;
   left:10px;
-  bottom:10px;
+  bottom:20px;
   font-size:13px;
   width: 100%;
-  padding: 17px;
+  padding: 25px;
 	background: url(../images/dark_stitch.gif) repeat-x scroll center bottom;
 }
 span.reference a{
@@ -281,7 +281,20 @@ span.reference a{
   text-transform:uppercase;
 }
 span.reference a:hover{
-  border-bottom:1px solid #ddd;
+  border-top:1px solid #ddd;
+}
+span.author{
+  font-family:Arial;
+  position:absolute;
+  right:10px;
+  bottom:0px;
+  font-size:13px;
+  padding: 5px;
+}
+span.author a{
+  color:#fff;
+  font-weight: bold;
+  margin-right:20px;
 }
 #dock{
   position:relative;
