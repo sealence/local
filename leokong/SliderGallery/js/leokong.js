@@ -53,10 +53,10 @@ $(function() {
     gallery_idx			= gallery_index;
     //snow fall
     if (gallery_idx == 0) {
-      $(document).snowfall({round : true, minSize: 5, maxSize:8});
+      $('#fp_snow').snowfall({round : true, minSize: 5, maxSize:8});
     }
     else {
-      $(document).snowfall('clear');
+      $('#fp_snow').snowfall('clear');
     }
     //close the gallery and slider if opened
     if($fp_thumbContainer.data('opened')==true){
@@ -503,7 +503,7 @@ $(function() {
 
   //Connects
   $connects.click(function(){
-      $(document).snowfall('clear');
+      $('#fp_snow').snowfall('clear');
       $fp_loading.show();
       $fp_overlay.load('connects.html',function(){
         //the Dock
@@ -523,7 +523,7 @@ $(function() {
 
   //About
   $about.click(function(){
-      $(document).snowfall('clear');
+      $('#fp_snow').snowfall('clear');
       $fp_loading.show();
       $fp_overlay.load('about.html',function(){
         //show
