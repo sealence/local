@@ -484,7 +484,7 @@ $(function() {
   $connects.click(function(){
       $fp_overlay.load('connects.html',function(){
         //the Dock
-        var $dock = $('#dock');
+        var $dock = $('.dock');
         //jqDock
         $dock.jqDock({
           align: 'middle'
