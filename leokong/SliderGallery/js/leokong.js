@@ -62,6 +62,10 @@ $(function() {
     else
       openGallery($gallery);
   });
+
+  //Init complete
+  $fp_loading.hide();
+  $fp_overlay.hide();
     
   //opens a gallery after cliking on a city / gallery
   function openGallery($gallery){
@@ -482,6 +486,7 @@ $(function() {
 
   //Connects
   $connects.click(function(){
+      $fp_loading.show();
       $fp_overlay.load('connects.html',function(){
         //the Dock
         var $dock = $('.dock');
@@ -492,20 +497,22 @@ $(function() {
          ,distance:40
         });
         //show
+        $fp_loading.hide();
         $fp_overlay.show();
+        $fp_close_overlay.show();
       });
-
-      $fp_close_overlay.show();
   });
 
   //About
   $about.click(function(){
 //    $.colorbox({width:"80%", height:"80%", iframe:true, href:"about.html"});
+      $fp_loading.show();
       $fp_overlay.load('about.html',function(){
         //show
+        $fp_loading.hide();
         $fp_overlay.show();
+        $fp_close_overlay.show();
       });
-      $fp_close_overlay.show();
   });
 
 //END jQuery
