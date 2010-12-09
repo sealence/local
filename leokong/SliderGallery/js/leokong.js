@@ -66,7 +66,18 @@ $(function() {
   //Init complete
   $fp_loading.hide();
   $fp_overlay.hide();
-    
+
+  preload([
+      'images/douban.png',
+      'images/sina.png',
+      'images/taobao.png',
+      'images/mingcuisine.jpg',
+      'images/womenfall2010/1.jpg',
+      'images/womenfall2010/2.jpg'
+  ]);
+
+  ///////////////////////////////////////////////////
+  ///////////////////////////////////////////////////
   //opens a gallery after cliking on a city / gallery
   function openGallery($gallery){
     //current gets reseted
@@ -514,6 +525,15 @@ $(function() {
         $fp_close_overlay.show();
       });
   });
+ 
+  //Preload images
+  function preload(arrayOfImages) {
+      $(arrayOfImages).each(function(){
+          $('<img/>')[0].src = this;
+          // Alternatively you could use:
+          // (new Image()).src = this;
+      });
+  }
 
 //END jQuery
 });
