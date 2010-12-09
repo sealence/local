@@ -51,6 +51,13 @@ $(function() {
     var gallery_index 	= $gallery.index();
     if(gallery_idx == gallery_index) return;
     gallery_idx			= gallery_index;
+    //snow fall
+    if (gallery_idx == 0) {
+      $(document).snowfall({round : true, minSize: 5, maxSize:8});
+    }
+    else {
+      $(document).snowfall('clear');
+    }
     //close the gallery and slider if opened
     if($fp_thumbContainer.data('opened')==true){
       $fp_scrollWrapper.fadeOut();
@@ -496,6 +503,7 @@ $(function() {
 
   //Connects
   $connects.click(function(){
+      $(document).snowfall('clear');
       $fp_loading.show();
       $fp_overlay.load('connects.html',function(){
         //the Dock
@@ -515,7 +523,7 @@ $(function() {
 
   //About
   $about.click(function(){
-//    $.colorbox({width:"80%", height:"80%", iframe:true, href:"about.html"});
+      $(document).snowfall('clear');
       $fp_loading.show();
       $fp_overlay.load('about.html',function(){
         //show
