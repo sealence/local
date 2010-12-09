@@ -64,7 +64,6 @@ $(function() {
   });
 
   //Init complete
-  $fp_loading.hide();
   $fp_overlay.hide();
 
   preload([
