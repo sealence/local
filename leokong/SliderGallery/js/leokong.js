@@ -74,6 +74,7 @@ $(function() {
   $fp_overlay.hide();
 
   preload([
+      'images/loader.gif',
       'images/douban.png',
       'images/sina.png',
       'images/taobao.png',
