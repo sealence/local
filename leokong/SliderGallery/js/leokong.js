@@ -78,8 +78,7 @@ $(function() {
       'images/sina.png',
       'images/taobao.png',
       'images/mingcuisine.jpg',
-      'images/womenfall2010/1.jpg',
-      'images/womenfall2010/2.jpg'
+      'images/donliang.jpg'
   ]);
 
   ///////////////////////////////////////////////////
