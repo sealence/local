@@ -38,7 +38,7 @@ $(function() {
   var photo_nav			= true;
 
   //font replace
-	Cufon.replace('h1,h2,.fp_close,.author');
+	Cufon.replace('h1,h2,.fp_close,.author,.fb');
 
   //Sealence
   $('#sealence').colorbox({width:"80%", height:"80%", iframe:true});
@@ -515,6 +515,7 @@ $(function() {
          ,distance:40
         });
         //show
+	      Cufon.replace('h1');
         $fp_loading.hide();
         $fp_overlay.show();
         $fp_close_overlay.show();
