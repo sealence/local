@@ -510,7 +510,7 @@ $(function() {
         var $dock = $('.dock');
         //jqDock
         $dock.jqDock({
-          align: 'middle'
+          align: 'bottom'
          ,size:48
          ,distance:40
         });
