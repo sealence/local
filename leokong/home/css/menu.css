@@ -2,10 +2,6 @@ body {
   font-family: Helvetica, Arial, sans-serif;
 }
 
-p {
-  line-height: 1.5em;
-}
-
 a:focus {
     outline: none;
 }
@@ -41,7 +37,6 @@ ul.menu li ul li a, ul.menu ul.menu li ul li a {
   color: #000;
   padding-left: 20px;
 }
-
 ul.menu li ul li a:hover, ul.menu ul.menu li ul li a:hover {
   border-left: 5px #000 solid;
   padding-left: 15px;
@@ -51,7 +46,10 @@ ul.menu ul.menu li a:hover {
     padding-left: 0.5em;
 }
 ul.menu ul.menu {
-    border-left: 5px #f00 solid;
+  /*
+    border-left: 5px #fff solid;
+    */
+    padding-left: 12px;
 }
 ul.menu a.active, ul.menu ul.menu li a.active, ul.menu a.active:hover, ul.menu ul.menu li a.active:hover {
     text-decoration: none;
