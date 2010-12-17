@@ -2,7 +2,7 @@ $(function() {
   //caching
 
   //font replace
-	Cufon.replace('.fb');
+	Cufon.replace('.fb,h1');
 
 				// We only want these styles applied when javascript is enabled
 				$('div.navigation').css({'width' : '300px', 'float' : 'right'});
