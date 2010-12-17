@@ -40,5 +40,9 @@ hr.space {background:#fff;color:#fff;visibility:hidden;}
   padding-top: 25px;
 }
 #author {
-  float: right;
+  position: absolute;
+  margin-right: 20px;
+  right:10px;
+  bottom: 0px;
+  padding: 5px;
 }
