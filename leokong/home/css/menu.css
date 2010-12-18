@@ -1,7 +1,3 @@
-a:focus {
-    outline: none;
-}
-
 ul.menu, ul.menu ul {
   list-style-type:none;
   margin: 0;

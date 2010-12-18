@@ -55,6 +55,7 @@ jQuery.fn.initMenu = function() {
                 e.stopImmediatePropagation();
                 var theElement = $(this).next();
                 var parent = this.parentNode.parentNode;
+                this.blur();
                 if($(parent).hasClass('noaccordion')) {
                     if(theElement[0] === undefined) {
                         window.location.href = this.href;
