@@ -57,13 +57,55 @@ $(function() {
       }
     });
 
+    // Initialize Advanced Galleriffic Gallery
+    var gallery = $('#thumbs_wfall2010').galleriffic({
+      delay:                     2500,
+      numThumbs:                 9,
+      preloadAhead:              10,
+      enableTopPager:            true,
+      enableBottomPager:         true,
+      maxPagesToShow:            7,
+      imageContainerSel:         '#slideshow',
+      controlsContainerSel:      '#controls',
+      captionContainerSel:       '#caption',
+      loadingContainerSel:       '#loading',
+      renderSSControls:          true,
+      renderNavControls:         true,
+      playLinkText:              'Play Slideshow',
+      pauseLinkText:             'Pause Slideshow',
+      prevLinkText:              '&lsaquo; Prev',
+      nextLinkText:              'Next &rsaquo;',
+      nextPageLinkText:          'Next &rsaquo;',
+      prevPageLinkText:          '&lsaquo; Prev',
+      enableHistory:             false,
+      autoStart:                 false,
+      syncTransitions:           true,
+      defaultTransitionDuration: 900,
+      onSlideChange:             function(prevIndex, nextIndex) {
+        // 'this' refers to the gallery, which is an extension of $('#thumbs')
+        this.find('ul.thumbs').children()
+          .eq(prevIndex).fadeTo('fast', onMouseOutOpacity).end()
+          .eq(nextIndex).fadeTo('fast', 1.0);
+      },
+      onPageTransitionOut:       function(callback) {
+        this.fadeTo('fast', 0.0, callback);
+      },
+      onPageTransitionIn:        function() {
+        this.fadeTo('fast', 1.0);
+      }
+    });
+
     $container.css('visibility', 'hidden');;        
     $('#w2010show').click(function(){
       $container.css('visibility', 'visible');;        
+      $('#thumbs_wfall2010').hide();
+      $('#thumbs').show();
     });
 
     $('#m2010show').click(function(){
       $container.css('visibility', 'visible');;        
+      $('#thumbs').hide();
+      $('#thumbs_wfall2010').show();
     });
 
 /*
