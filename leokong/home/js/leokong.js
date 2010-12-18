@@ -1,6 +1,10 @@
 $(function() {
     //caching
     $container = $('#container');
+    $slideshow = $('#slideshow');
+    $controls  = $('#controls');
+    $caption   = $('#caption');
+    $loading   = $('#loading');
 
     //font replace
     Cufon.replace('.fb,h1');
