@@ -1,10 +1,9 @@
 $(function() {
     //caching
-    $container = $('#container');
-    $slideshow = $('#slideshow');
-    $controls  = $('#controls');
-    $caption   = $('#caption');
-    $loading   = $('#loading');
+    var $container = $('#container > div');
+    var $gc0 = $('#gc0');
+    var $gc1 = $('#gc1');
+    var $gc2 = $('#gc2');
 
     //font replace
     Cufon.replace('.fb,h1');
@@ -24,17 +23,17 @@ $(function() {
     });
     
     // Initialize Advanced Galleriffic Gallery
-    var gallery = $('#thumbs').galleriffic({
+    var gallery0 = $('#thumbs0').galleriffic({
       delay:                     2500,
       numThumbs:                 9,
       preloadAhead:              10,
       enableTopPager:            true,
       enableBottomPager:         true,
       maxPagesToShow:            7,
-      imageContainerSel:         '#slideshow',
-      controlsContainerSel:      '#controls',
-      captionContainerSel:       '#caption',
-      loadingContainerSel:       '#loading',
+      imageContainerSel:         '#slideshow0',
+      controlsContainerSel:      '#controls0',
+      captionContainerSel:       '#caption0',
+      loadingContainerSel:       '#loading0',
       renderSSControls:          true,
       renderNavControls:         true,
       playLinkText:              'Play Slideshow',
@@ -62,17 +61,17 @@ $(function() {
     });
 
     // Initialize Advanced Galleriffic Gallery
-    var gallery = $('#thumbs_wfall2010').galleriffic({
+    var gallery1 = $('#thumbs1').galleriffic({
       delay:                     2500,
       numThumbs:                 9,
       preloadAhead:              10,
       enableTopPager:            true,
       enableBottomPager:         true,
       maxPagesToShow:            7,
-      imageContainerSel:         '#slideshow',
-      controlsContainerSel:      '#controls',
-      captionContainerSel:       '#caption',
-      loadingContainerSel:       '#loading',
+      imageContainerSel:         '#slideshow1',
+      controlsContainerSel:      '#controls1',
+      captionContainerSel:       '#caption1',
+      loadingContainerSel:       '#loading1',
       renderSSControls:          true,
       renderNavControls:         true,
       playLinkText:              'Play Slideshow',
@@ -100,16 +99,15 @@ $(function() {
     });
 
     $container.hide();
+
     $('#w2010show').click(function(){
-      $container.show();
-      $('#thumbs_wfall2010').hide();
-      $('#thumbs').show();
+      $container.hide();
+      $gc1.show();
     });
 
     $('#m2010show').click(function(){
-      $container.show();
-      $('#thumbs').hide();
-      $('#thumbs_wfall2010').show();
+      $container.hide();
+      $gc0.show();
     });
 
 /*
