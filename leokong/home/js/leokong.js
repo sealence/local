@@ -99,15 +99,15 @@ $(function() {
       }
     });
 
-    $container.css('visibility', 'hidden');;        
+    $container.hide();
     $('#w2010show').click(function(){
-      $container.css('visibility', 'visible');;        
+      $container.show();
       $('#thumbs_wfall2010').hide();
       $('#thumbs').show();
     });
 
     $('#m2010show').click(function(){
-      $container.css('visibility', 'visible');;        
+      $container.show();
       $('#thumbs').hide();
       $('#thumbs_wfall2010').show();
     });
