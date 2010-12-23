@@ -7,11 +7,14 @@ R/xhtml1/DTD/xhtml1-strict.dtd">
     <link rel="stylesheet" type="text/css" href="css/style.css" />
     <link rel="stylesheet" type="text/css" href="css/menu.css" />
     <link rel="stylesheet" type="text/css" href="css/galleriffic-2.css" />
+    <link rel="stylesheet" type="text/css" href="css/colorbox.css" />
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.4/jquery.min.js"></script>
     <!--script type="text/javascript" src="js/jquery-1.4.4.min.js"></script-->
     <script type="text/javascript" src="js/menu.js"></script>
     <script type="text/javascript" src="js/jquery.galleriffic.js"></script>
     <script type="text/javascript" src="js/jquery.opacityrollover.js"></script>
+	<script type="text/javascript" src="js/jquery.colorbox-min.js"></script>
+	<script type="text/javascript" src="js/jquery.jqDock.min.js"></script>
 	<script src="js/cufon-yui.js" type="text/javascript"></script>
 	<script src="js/Agency_FB_700.font.js" type="text/javascript"></script>
     <!-- We only want the thunbnails to display when javascript is disabled -->
@@ -52,9 +55,9 @@ R/xhtml1/DTD/xhtml1-strict.dtd">
                 </ul>
             </li>
             <li>
-                <a href="#" class="fb">Follow us</a>
+            <a href="#" class="fb"><span id="follow">Follow us</span></a>
             </li>
-            <li><a href="#" class="fb">Shops</a></li>
+            <li><a href="#" class="fb"><span id="shops">Shops</span></a></li>
         </ul>   
         <div class="clear"></div>
     </div>
@@ -696,6 +699,54 @@ R/xhtml1/DTD/xhtml1-strict.dtd">
     </div>
 
     <span id="author" class="fb">Design by Sealence</span>
+
+    <!-- inline calls -->
+    <div style="display:none">
+
+          <div id="shops_content">
+            <p>
+            <a href="http://t.sina.com.cn/idongliang"><img style="float:left;margin:4px;border:1px solid white;" src="images/donliang.jpg"/></a>
+            <br/>个人品牌所有新品可在栋梁设计师品牌店试穿和购买
+            <br/>地址：北京东城区雍和宫大街五道营胡同26号
+            <br/>电话：010－84047648
+            <div class="clear"></div>
+            </p>
+            <p>
+            <a href="http://shop62893416.taobao.com/"><img style="float:left;margin:4px;border:1px solid white;" src="images/taobao.png"/></a>
+            <br/>为方便外地友人购买新系列的服装...特在淘宝建了个简单的商店...
+            <br/>有需要的朋友可以直接联系卖家
+            <br/>
+            <br/>工作联系E-mail：guobaodidi@163.com
+            <div class="clear"></div>
+            </p>
+          </div>
+
+        <div id="follow_content">
+          <h1 style="text-align:center;">Leo Kong</h1>
+          <hr/>
+          <div class="dock">
+            <a href="http://www.douban.com/people/woolly" target="_bank">
+              <img style="border:0;" src='./images/douban.png' title='douban'/>
+            </a>
+            <a href="http://t.sina.com.cn/leokong1113" target="_bank">
+              <img style="border:0;" src='./images/sina.png'  title='sina'/>
+            </a>
+            <a href="http://shop62893416.taobao.com/" target="_bank">
+              <img style="border:0;" src='./images/taobao.png'  title='taobao'/>
+            </a>
+          </div>
+          <h1 style="text-align:center;">Annie He</h1>
+          <hr/>
+          <div class="dock">
+            <a href="http://t.sina.com.cn/leokong1113" target="_bank">
+              <img style="border:0;" src='./images/sina.png'  title='sina'/>
+            </a>
+            <a href="http://www.douban.com/photos/album/36011989/" target="_bank">
+              <img style="border:0;" src='./images/mingcuisine.jpg'  title='taobao'/>
+            </a>
+        </div>
+
+    </div>
 
 </body>
 </html>

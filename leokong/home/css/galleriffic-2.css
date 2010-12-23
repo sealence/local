@@ -12,6 +12,8 @@ div.content a:focus, div.content a:hover, div.content a:active {
 	text-decoration: underline;
 }
 div.controls {
+	font-weight: bold;
+  color: #333;
 	margin-top: 5px;
 	height: 23px;
 }

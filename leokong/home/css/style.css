@@ -48,3 +48,38 @@ hr.space {background:#fff;color:#fff;visibility:hidden;}
   bottom: 0px;
   padding: 5px;
 }
+#shops_content{
+  position:relative;
+  top:20%;
+  text-align:left;
+  margin:0 auto;
+  width:600px;
+}
+#shops_content a{
+  color:#000;
+  font-weight: bold;
+  margin-right:20px;
+}
+#follow_content{
+  position:relative;
+  top:20%;
+  text-align:left;
+  margin:0 auto;
+  width:600px;
+}
+#follow_content a{
+  color:#000;
+  font-weight: bold;
+  margin-right:20px;
+}
+.dock{
+  position:relative;
+  width:100%;
+}
+/*...centre the dock...*/
+.dock div.jqDockWrap {margin:0 auto;text-align: left;}
+/*...set the cursor...*/
+.dock div.jqDock {cursor:pointer;}
+/*label styling...*/
+div.jqDockLabel {font-weight:bold; font-style:italic; white-space:nowrap; color:#ffffff; cursor:pointer;}
+

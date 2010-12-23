@@ -15,7 +15,7 @@ $(function() {
     // Initially set opacity on thumbs and add
     // additional styling for hover effect on thumbs
     var onMouseOutOpacity = 0.67;
-    $('#thumbs ul.thumbs li').opacityrollover({
+    $('.navigation ul.thumbs li').opacityrollover({
       mouseOutOpacity:   onMouseOutOpacity,
       mouseOverOpacity:  1.0,
       fadeSpeed:         'fast',
@@ -136,6 +136,15 @@ $(function() {
       }
     });
 
+    //the Dock
+    var $dock = $('.dock');
+    //jqDock
+    $dock.jqDock({
+      align: 'bottom'
+     ,size:48
+     ,distance:40
+    });
+
     $container.hide();
 
     $('#xmas').click(function(){
@@ -151,6 +160,16 @@ $(function() {
     $('#m2010show').click(function(){
       $container.hide();
       $gc2.show();
+    });
+
+    $('#follow').click(function(){
+      $container.hide();
+      $.colorbox({width:"80%", height:"80%", inline:true, href:"#follow_content"});
+    });
+
+    $('#shops').click(function(){
+      $container.hide();
+      $.colorbox({width:"80%", height:"80%", inline:true, href:"#shops_content"});
     });
 
 /*
