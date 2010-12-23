@@ -9,6 +9,10 @@ ul.menu a {
   text-decoration: none;	
 }
 
+ul.menu a span {
+  display: block;
+}
+
 ul.menu li {
   margin-top: 1px;
 }

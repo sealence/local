@@ -13,7 +13,8 @@ div.content a:focus, div.content a:hover, div.content a:active {
 }
 div.controls {
 	font-weight: bold;
-  color: #333;
+  font-size: 75%;
+  color: #777;
 	margin-top: 5px;
 	height: 23px;
 }
@@ -120,6 +121,7 @@ ul.thumbs img {
 	display: block;
 }
 div.pagination {
+  font-size:75%;
 	clear: both;
 }
 div.navigation div.top {
