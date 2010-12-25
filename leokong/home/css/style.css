@@ -29,6 +29,10 @@ hr.space {background:#fff;color:#fff;visibility:hidden;}
 .clearfix, .container {display:block;}
 .clear {clear:both;}
 
+html, body {
+  height: 100%;
+}
+
 /* main */
 #header {
   padding: 20px 0px 0px 10px;
@@ -83,3 +87,15 @@ hr.space {background:#fff;color:#fff;visibility:hidden;}
 /*label styling...*/
 div.jqDockLabel {font-weight:bold; font-style:italic; white-space:nowrap; color:#ffffff; cursor:pointer;}
 
+.fp_overlay{
+	/*display:none;*/
+	position:absolute;
+	top:0px;
+	left:0px;
+  height:100%;
+  width:100%;
+	z-index:10;
+	background:#fff;
+	opacity:0.9;
+	filter:progid:DXImageTransform.Microsoft.Alpha(opacity=80);
+}

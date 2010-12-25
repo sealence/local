@@ -1,6 +1,7 @@
 $(function() {
     //caching
     var $container = $('#container > div');
+    var $fp_overlay			= $('#fp_overlay');
     var $gc0 = $('#gc0');
     var $gc1 = $('#gc1');
     var $gc2 = $('#gc2');
@@ -171,6 +172,9 @@ $(function() {
       $container.hide();
       $.colorbox({width:"80%", height:"80%", inline:true, href:"#shops_content"});
     });
+
+    //Init complete
+    $fp_overlay.hide();
 
 /*
   preload([
