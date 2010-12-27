@@ -51,6 +51,10 @@ html, body {
   right:10px;
   bottom: 0px;
   padding: 5px;
+  font-size: 13px;
+}
+#author a {
+  text-decoration: none;
 }
 #shops_content{
   position:relative;

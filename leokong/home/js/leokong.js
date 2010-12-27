@@ -9,6 +9,9 @@ $(function() {
     //font replace
     Cufon.replace('.fb,h1');
   
+    //Sealence
+    $('#sealence').colorbox({width:"80%", height:"80%", iframe:true});
+
     // We only want these styles applied when javascript is enabled
     $('div.navigation').css({'width' : '300px', 'float' : 'right'});
     $('div.content').css('display', 'block');
@@ -27,7 +30,7 @@ $(function() {
     var gallery0 = $('#thumbs0').galleriffic({
       delay:                     2500,
       numThumbs:                 9,
-      preloadAhead:              10,
+      preloadAhead:              0,
       enableTopPager:            true,
       enableBottomPager:         true,
       maxPagesToShow:            7,
@@ -65,7 +68,7 @@ $(function() {
     var gallery1 = $('#thumbs1').galleriffic({
       delay:                     2500,
       numThumbs:                 9,
-      preloadAhead:              10,
+      preloadAhead:              0,
       enableTopPager:            true,
       enableBottomPager:         true,
       maxPagesToShow:            7,
@@ -103,7 +106,7 @@ $(function() {
     var gallery2 = $('#thumbs2').galleriffic({
       delay:                     2500,
       numThumbs:                 9,
-      preloadAhead:              10,
+      preloadAhead:              0,
       enableTopPager:            true,
       enableBottomPager:         true,
       maxPagesToShow:            7,
