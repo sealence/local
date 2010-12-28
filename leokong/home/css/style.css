@@ -52,9 +52,11 @@ html, body {
   bottom: 0px;
   padding: 5px;
   font-size: 13px;
+  color: #333;
 }
 #author a {
   text-decoration: none;
+  color: #333;
 }
 #shops_content{
   position:relative;
@@ -102,4 +104,11 @@ div.jqDockLabel {font-weight:bold; font-style:italic; white-space:nowrap; color:
 	background:#fff;
 	opacity:0.9;
 	filter:progid:DXImageTransform.Microsoft.Alpha(opacity=80);
+}
+div#shWaitBar {
+    position: absolute;
+    width: 100px;
+    left: 50%;
+    margin-left: -50px;
+    margin-top: 150px;
 }
