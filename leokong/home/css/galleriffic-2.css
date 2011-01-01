@@ -91,6 +91,7 @@ div.image-title {
 div.image-desc {
 	line-height: 1.3em;
 	padding-top: 12px;
+  font-family: "黑体", "tahoma";
 }
 div.navigation {
 	/* The navigation style is set using jQuery so that the javascript specific styles won't be applied unless javascript is enabled. */
