@@ -176,6 +176,11 @@ $(function() {
       $.colorbox({width:"80%", height:"80%", inline:true, href:"#shops_content"});
     });
 
+    $('#about').click(function(){
+      $container.hide();
+      $.colorbox({width:"80%", height:"80%", inline:true, href:"#about_content"});
+    });
+
     //Init complete
     $fp_overlay.hide();
 
