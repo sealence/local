@@ -72,7 +72,7 @@ div.download {
 div.caption-container {
 	position: relative;
 	clear: left;
-	height: 75px;
+	/*height: 75px;*/
 }
 span.image-caption {
 	display: block;
@@ -90,7 +90,7 @@ div.image-title {
 }
 div.image-desc {
 	line-height: 1.3em;
-	padding-top: 12px;
+	/*padding-top: 12px;*/
   font-family: "黑体", "tahoma";
 }
 div.navigation {
