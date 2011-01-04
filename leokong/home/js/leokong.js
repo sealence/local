@@ -156,12 +156,12 @@ $(function() {
       $gc0.show();
     });
 
-    $('#w2010show').click(function(){
+    $('#w2010ss').click(function(){
       $container.hide();
       $gc1.show();
     });
 
-    $('#m2010show').click(function(){
+    $('#m2010ss').click(function(){
       $container.hide();
       $gc2.show();
     });
