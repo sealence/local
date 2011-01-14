@@ -229,10 +229,10 @@ $(function() {
     $fp_overlay.hide();
 
   preload([
-      'images/images/wm2010aw/thumbs.jpg',
-      'images/images/xmas/thumbs.jpg',
-      'images/images/womenfall2010/thumbs.jpg',
-      'images/images/menfall2010/thumbs.jpg'
+      'images/wm2010aw/thumbs.jpg',
+      'images/xmas/thumbs.jpg',
+      'images/womenfall2010/thumbs.jpg',
+      'images/menfall2010/thumbs.jpg'
   ]);
 
   ///////////////////////////////////////////////////
