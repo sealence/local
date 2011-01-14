@@ -228,16 +228,13 @@ $(function() {
     //Init complete
     $fp_overlay.hide();
 
-/*
   preload([
-      'images/loader.gif',
-      'images/douban.png',
-      'images/sina.png',
-      'images/taobao.png',
-      'images/mingcuisine.jpg',
-      'images/donliang.jpg'
+      'images/images/wm2010aw/thumbs.jpg',
+      'images/images/xmas/thumbs.jpg',
+      'images/images/womenfall2010/thumbs.jpg',
+      'images/images/menfall2010/thumbs.jpg'
   ]);
-*/
+
   ///////////////////////////////////////////////////
   //
   //     Functions
